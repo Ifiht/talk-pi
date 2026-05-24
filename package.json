@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "node-record-lpcm16-ts": "^1.0.0"
+    "node-record-lpcm16-ts": "^1.0.0",
+    "whisper-cpp-node": "^0.2.12"
   },
   "devDependencies": {
     "@types/node": "^22.15.0"

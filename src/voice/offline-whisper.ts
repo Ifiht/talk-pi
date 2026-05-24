@@ -3,14 +3,17 @@ import fsp from "node:fs/promises";
 import https from "node:https";
 import os from "node:os";
 import path from "node:path";
-import { createWhisperContext, transcribeAsync } from "whisper-cpp-node";
+import { createRequire } from "node:module";
+
+const { createWhisperContext, transcribeAsync } = createRequire(import.meta.url)("whisper-cpp-node") as typeof import("whisper-cpp-node");
 
 const DEFAULT_MODEL_URL =
   "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin";
 
 export type WhisperResult = {
   text: string;
-  segments: Array<[string, string, string]>;
+  language?: string;
+  segments: Array<{ start: string; end: string; text: string }>;
 };
 
 function homeModelPath(): string {
@@ -84,7 +87,11 @@ export async function transcribeAudioFile(filePath: string): Promise<WhisperResu
     no_timestamps: false,
   });
 
-  const segments = (result?.segments ?? []) as Array<[string, string, string | undefined]>;
-  const text = String((result as { text?: unknown } | undefined)?.text ?? segments.map((segment) => String(segment[2] ?? "").trim()).join(" ")).trim();
-  return { text, segments: segments as Array<[string, string, string]> };
+  const segments = (result?.segments ?? []).map((segment) => ({
+    start: segment.start,
+    end: segment.end,
+    text: String(segment.text ?? "").trim(),
+  }));
+  const text = String(segments.map((segment) => segment.text).join(" ")).trim();
+  return { text, language: result?.language, segments };
 }

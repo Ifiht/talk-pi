@@ -1,9 +1,10 @@
 import { matchesKey } from "@earendil-works/pi-tui";
 import { startMicCapture, type MicCapture } from "./offline-recorder";
+import { transcribeAudioFile } from "./offline-whisper";
 
 export const PUSH_TO_TALK_KEY = "f10";
 
-export type VoiceCaptureStatus = "idle" | "recording" | "stopping" | "error";
+export type VoiceCaptureStatus = "idle" | "recording" | "transcribing" | "error";
 
 export type VoiceCaptureSession = {
   status: VoiceCaptureStatus;
@@ -12,7 +13,7 @@ export type VoiceCaptureSession = {
   stop(): Promise<string | undefined>;
   toggle(): Promise<string | undefined>;
   renderLines(): string[];
-  handleInput(data: string, done: (filePath: string | undefined) => void): void;
+  handleInput(data: string, done: (result: string | undefined) => void): void;
   dispose(): Promise<void>;
 };
 
@@ -45,14 +46,29 @@ export function createVoiceCaptureSession(notify: (message: string, level: "info
 
   const stop = async (): Promise<string | undefined> => {
     if (!capture || !active) return undefined;
-    set("stopping", "Stopping...");
+    set("transcribing", "Transcribing WAV to text...");
     await capture.stop();
     const filePath = capture.filePath;
     capture = undefined;
     active = false;
-    set("idle", "Ready");
-    notify(`Recording saved`, "info");
-    return filePath;
+
+    try {
+      const result = await transcribeAudioFile(filePath);
+      const text = String(result?.text ?? "").trim();
+      if (!text) {
+        set("idle", "Ready");
+        notify("No speech detected", "warning");
+        return undefined;
+      }
+
+      set("idle", "Ready");
+      notify(`Transcript ready`, "info");
+      return text;
+    } catch (error) {
+      set("error", "Transcription failed");
+      notify(error instanceof Error ? error.message : "Transcription failed", "error");
+      return undefined;
+    }
   };
 
   const dispose = async () => {
