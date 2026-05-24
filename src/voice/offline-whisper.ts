@@ -77,7 +77,7 @@ export async function transcribeAudioFile(filePath: string): Promise<WhisperResu
   const modelPath = await ensureWhisperModel();
   if (!cachedContext || cachedModelPath !== modelPath) {
     cachedContext?.free?.();
-    cachedContext = createWhisperContext({ model: modelPath, use_gpu: false });
+    cachedContext = createWhisperContext({ model: modelPath, use_gpu: false, no_prints: true });
     cachedModelPath = modelPath;
   }
 
