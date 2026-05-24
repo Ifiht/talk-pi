@@ -35,13 +35,25 @@ export default function (pi: ExtensionAPI) {
     ctx.ui.setEditorComponent?.((tui, theme, keybindings) => {
       class PushToTalkEditor extends CustomEditor {
         private recording = false;
+        private lastToggleAt = 0;
+        private readonly toggleCooldownMs = 2000;
 
         constructor() {
           super(tui as never, theme as never, keybindings as never);
         }
 
         handleInput(data: string): void {
+          if (data.includes(":2")) {
+            return;
+          }
+
           if (matchesKey(data, PUSH_TO_TALK_KEY)) {
+            const now = Date.now();
+            if (now - this.lastToggleAt < this.toggleCooldownMs) {
+              return;
+            }
+            this.lastToggleAt = now;
+
             if (!this.recording) {
               this.recording = true;
               void voiceSession.start().then(() => syncStatus(activeCtx ?? ctx)).catch((error) => {
@@ -75,7 +87,7 @@ export default function (pi: ExtensionAPI) {
     handler: async (_args, ctx) => {
       activeCtx = ctx;
       syncStatus(ctx);
-      ctx.ui.notify(`Push-to-talk ready: hold ${PUSH_TO_TALK_KEY}`, "info");
+      ctx.ui.notify(`Push-to-talk ready: tap ${PUSH_TO_TALK_KEY} twice`, "info");
     },
   });
 }
