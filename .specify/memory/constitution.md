@@ -1,74 +1,91 @@
 <!--
 Sync Impact Report
-Version change: template -> 1.0.0
+Version change: unversioned template → 1.0.0
 Modified principles:
-- PRINCIPLE_1_NAME -> I. Extension Isolation & OO Boundaries
-- PRINCIPLE_2_NAME -> II. Clean Code & Simplicity
-- PRINCIPLE_3_NAME -> III. Test Coverage First
-- PRINCIPLE_4_NAME -> IV. Safe Side Effects & Guardrails
-- PRINCIPLE_5_NAME -> V. Documentation & Observability
+- placeholder principle 1 → I. Test-First Delivery
+- placeholder principle 2 → II. Clean Code, Clear Names
+- placeholder principle 3 → III. OO + SOLID Design
+- placeholder principle 4 → IV. Simplicity First (KISS + YAGNI)
+- placeholder principle 5 → V. Change Safety and Version Discipline
 Added sections:
 - Engineering Standards
-- Workflow & Quality Gates
+- Delivery Workflow and Review
 Removed sections:
-- None
-Templates reviewed:
-- ✅ .specify/templates/plan-template.md
-- ✅ .specify/templates/spec-template.md
-- ✅ .specify/templates/tasks-template.md
-- ✅ .specify/templates/commands/* (none present)
+- Template placeholder comments and example guidance
+Templates requiring updates:
+- .specify/templates/plan-template.md ✅ updated
+- .specify/templates/tasks-template.md ✅ updated
+- .specify/templates/spec-template.md ✅ updated
 Deferred items:
 - None
 -->
-
-# Talk-Pi Constitution
+# talk-pi Constitution
 
 ## Core Principles
 
-### I. Extension Isolation & OO Boundaries
-All features MUST live in small, focused modules or classes with a single responsibility.
-Composition MUST be preferred over inheritance. Tool handlers, commands, hooks, and UI components MUST delegate business logic to testable services.
-Shared state MUST be explicit and limited; global state and hidden coupling are forbidden.
+### I. Test-First Delivery
+All behavior changes MUST start with failing automated tests that describe the
+intended outcome. Bug fixes MUST add a regression test. Implementation MUST follow
+Red-Green-Refactor. Tests MUST be deterministic, isolated, and owned with the
+feature they protect.
+Rationale: TDD keeps design honest and prevents silent regressions.
 
-### II. Clean Code & Simplicity
-Names MUST express intent. Code MUST take the simplest design that satisfies current requirements.
-Dead code, duplication, and speculative abstractions MUST be removed or avoided.
-Complexity MUST be justified by a documented need; otherwise the simpler solution wins.
+### II. Clean Code, Clear Names
+Code MUST read like intent, not puzzle text. Names MUST explain purpose. Functions
+and classes MUST stay small, and duplicate logic MUST be extracted only when it
+reduces complexity. Dead code, commented-out code, and unclear magic values MUST be
+removed.
+Rationale: readable code is cheaper to change and review.
 
-### III. Test Coverage First
-New behavior MUST be covered by automated tests before merge. Bug fixes MUST add regression tests.
-Unit tests MUST cover core logic, and integration tests MUST cover user-facing flows, tool execution, parsing, and state transitions.
-A change is incomplete until tests pass and the affected behavior is verified.
+### III. OO + SOLID Design
+Use objects for real domain behavior and keep responsibilities narrow. Classes MUST
+obey single responsibility; dependencies MUST flow through abstractions at
+boundaries; and polymorphism MUST replace type checks when variation is real. Do not
+force OO where a simple function is clearer.
+Rationale: well-shaped objects improve extension without ripple effects.
 
-### IV. Safe Side Effects & Guardrails
-Any action that mutates files, runs shell commands, touches network resources, or changes agent state MUST be bounded by clear intent and, when risky, explicit user consent.
-Dangerous operations MUST be protected by guardrails and easy-to-review rules.
-Side effects SHOULD be reversible or idempotent where practical.
+### IV. Simplicity First (KISS + YAGNI)
+Choose the smallest solution that satisfies current requirements. Avoid premature
+abstraction, speculative flexibility, and multi-step indirection unless evidence
+shows need. Prefer explicit flows over clever shortcuts.
+Rationale: simple systems are easier to test, debug, and evolve.
 
-### V. Documentation & Observability
-Public commands, tools, prompts, and workflows MUST have concise docs and usage examples.
-Errors MUST be actionable. Logging and status output MUST expose enough context to diagnose failures without leaking secrets.
-Behavior changes MUST be reflected in the project docs and supporting artifacts.
+### V. Change Safety and Version Discipline
+Any public behavior, contract, or governance change MUST be versioned and
+documented. Backward-incompatible change MUST be called out before merge and
+accompanied by a migration or rollback note. Patch, minor, and major version bumps
+MUST follow the constitution rules below.
+Rationale: stable change management keeps extension behavior predictable.
 
 ## Engineering Standards
+- Every feature or bug fix MUST include tests that fail before implementation and
+  pass after it.
+- Formatting, linting, static analysis, and test suites relevant to touched code MUST
+  pass before merge.
+- Reviewers MUST check naming, duplication, boundaries, and SOLID/KISS adherence.
+- Documentation, templates, and specs MUST be updated when behavior or workflow
+  changes.
+- Temporary scaffolding and TODOs MUST be removed or tracked before completion.
 
-- TypeScript SHOULD use strict typing; `any` is forbidden unless justified at the boundary.
-- Dependencies MUST be minimized and added only when they clearly reduce risk or complexity.
-- Extension code MUST stay compatible with the current Pi Coding Agent extension and SDK APIs.
-- Root-level project documents are the source of truth for implementation intent.
-
-## Workflow & Quality Gates
-
-- Each change MUST start from the smallest useful scope and preserve independent testability.
-- Implementation MUST follow red-green-refactor when tests are added or changed.
-- Before merge, the changed surface MUST be reviewed for principle compliance, test coverage, and documentation drift.
-- Breaking changes MUST include a migration note and a semantic version bump.
+## Delivery Workflow and Review
+1. Clarify scope and acceptance criteria.
+2. Write failing tests for the smallest valuable slice.
+3. Implement the minimum code needed to pass.
+4. Refactor without changing behavior.
+5. Run all relevant automated checks.
+6. Review for simplicity, clean code, and architectural fit.
+7. Ship only after tests, docs, and version notes are consistent.
 
 ## Governance
-
-This constitution supersedes informal practice, templates, and local conventions.
-Amendments require a written rationale, a semantic version bump, and an updated sync report.
-Versioning policy: MAJOR for breaking governance or principle changes, MINOR for new principles or materially expanded guidance, PATCH for clarifications and non-semantic refinements.
-Compliance review is required at spec, plan, task, and merge time. Any conflict with other guidance resolves in favor of this constitution.
+This constitution overrides local habits, ad hoc prompts, and template defaults.
+Any amendment MUST include the rationale, affected principles, and semantic version
+bump.
+MAJOR bump: remove, redefine, or break a principle or governance rule.
+MINOR bump: add a principle, section, or materially expand rules.
+PATCH bump: wording, clarification, or typo fixes only.
+Every plan, spec, task list, and implementation review MUST verify constitution
+compliance.
+If a rule must be bypassed, the exception MUST be documented in plan complexity notes
+and approved by a human reviewer.
 
 **Version**: 1.0.0 | **Ratified**: 2026-05-23 | **Last Amended**: 2026-05-23

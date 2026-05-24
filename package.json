@@ -1,0 +1,11 @@
+{
+  "name": "talk-pi",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "node-record-lpcm16-ts": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0"
+  }
+}

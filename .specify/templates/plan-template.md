@@ -40,7 +40,11 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- [ ] Every behavior change has failing tests defined before implementation
+- [ ] Design stays simple; no speculative abstractions or hidden coupling
+- [ ] Domain logic uses small, testable objects with clear responsibilities
+- [ ] Breaking changes include versioning, migration, or rollback notes
+- [ ] Docs, specs, and templates are updated when workflow or behavior changes
 
 ## Project Structure
 

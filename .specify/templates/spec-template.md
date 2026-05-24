@@ -85,6 +85,9 @@
   Fill them out with the right functional requirements.
 -->
 
+Every requirement MUST be testable and traceable to at least one acceptance
+scenario or automated test.
+
 ### Functional Requirements
 
 - **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]

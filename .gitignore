@@ -1,12 +1,12 @@
-### Windows
-# Windows thumbnail cache files
+.DS_Store
 Thumbs.db
-
-# Folder config file
-[Dd]esktop.ini
-
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
-
-# Windows shortcuts
-*.lnk
+.vscode/
+.idea/
+node_modules/
+dist/
+build/
+coverage/
+.env*
+*.log
+*.tmp
+*.swp
