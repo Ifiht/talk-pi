@@ -2,7 +2,11 @@ import { matchesKey } from "@earendil-works/pi-tui";
 import { startMicCapture, type MicCapture } from "./offline-recorder";
 import { transcribeAudioFile } from "./offline-whisper";
 
-export const PUSH_TO_TALK_KEY = "f10";
+const DEFAULT_PUSH_TO_TALK_KEY = "f10";
+
+export type VoiceCaptureOptions = {
+  pushToTalkKey?: string;
+};
 
 export type VoiceCaptureStatus = "idle" | "recording" | "transcribing" | "error";
 
@@ -17,7 +21,11 @@ export type VoiceCaptureSession = {
   dispose(): Promise<void>;
 };
 
-export function createVoiceCaptureSession(notify: (message: string, level: "info" | "warning" | "error") => void): VoiceCaptureSession {
+export function createVoiceCaptureSession(
+  notify: (message: string, level: "info" | "warning" | "error") => void,
+  options: VoiceCaptureOptions = {},
+): VoiceCaptureSession {
+  const pushToTalkKey = options.pushToTalkKey?.trim().toLowerCase() || DEFAULT_PUSH_TO_TALK_KEY;
   let status: VoiceCaptureStatus = "idle";
   let message = "Ready";
   let capture: MicCapture | undefined;
@@ -100,13 +108,13 @@ export function createVoiceCaptureSession(notify: (message: string, level: "info
         "",
         `  Voice: ${status}`,
         `  ${message}`,
-        `  Hold ${PUSH_TO_TALK_KEY} to record; release to stop.`,
+        `  Hold ${pushToTalkKey} to record; release to stop.`,
         "",
       ];
     },
     toggle,
     handleInput(data, done) {
-      if (matchesKey(data, PUSH_TO_TALK_KEY)) {
+      if (matchesKey(data, pushToTalkKey)) {
         void toggle().then(done).catch(() => done(undefined));
         return;
       }

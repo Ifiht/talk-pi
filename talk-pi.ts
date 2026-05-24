@@ -1,11 +1,12 @@
 import { CustomEditor } from "@mariozechner/pi-coding-agent";
 import { isKeyRelease, matchesKey } from "@mariozechner/pi-tui";
 import { insertTranscriptIntoEditor } from "./src/input/editor-insert.ts";
+import { getTalkPiShortcutConfig } from "./src/input/shortcut-config.ts";
 import { createShortcutDebounce } from "./src/input/f5-shortcut.ts";
 import { extractAssistantReplyText } from "./src/tts/assistant-reply.ts";
 import { createPlaybackQueue } from "./src/tts/playback-queue.ts";
 import { formatTranscriptionStatus } from "./src/ui/transcription-status.ts";
-import { createVoiceCaptureSession, PUSH_TO_TALK_KEY } from "./src/voice/voice-capture.ts";
+import { createVoiceCaptureSession } from "./src/voice/voice-capture.ts";
 
 type ExtensionContext = {
   ui: {
@@ -28,14 +29,20 @@ type ExtensionAPI = {
 
 export default function (pi: ExtensionAPI) {
   let activeCtx: ExtensionContext | undefined;
+  const shortcutConfig = getTalkPiShortcutConfig();
 
-  const voiceSession = createVoiceCaptureSession((message, level) => {
-    activeCtx?.ui.notify(message, level);
-  });
+  const voiceSession = createVoiceCaptureSession(
+    (message, level) => {
+      activeCtx?.ui.notify(message, level);
+    },
+    {
+      pushToTalkKey: shortcutConfig.insertTranscriptKey,
+    },
+  );
 
   let speechStatus = "";
-  const f5Debounce = createShortcutDebounce();
-  const f10Debounce = createShortcutDebounce();
+  const sendTranscriptDebounce = createShortcutDebounce();
+  const insertTranscriptDebounce = createShortcutDebounce();
 
   const playbackQueue = createPlaybackQueue({
     isRecordingBlocked: () => voiceSession.status !== "idle",
@@ -79,13 +86,13 @@ export default function (pi: ExtensionAPI) {
     ctx.ui.setEditorComponent?.((tui, theme, keybindings) => {
       class PushToTalkEditor extends CustomEditor {
         private recording = false;
-        private recordingShortcut: "f5" | "f10" | undefined;
+        private recordingShortcut: "send" | "insert" | undefined;
 
         constructor() {
           super(tui as never, theme as never, keybindings as never);
         }
 
-        private toggleVoiceCapture(shortcut: "f5" | "f10"): void {
+        private toggleVoiceCapture(shortcut: "send" | "insert"): void {
           if (!this.recording) {
             this.recording = true;
             this.recordingShortcut = shortcut;
@@ -106,7 +113,7 @@ export default function (pi: ExtensionAPI) {
           void stopPromise.then((text) => {
             const transcript = String(text ?? "").trim();
             if (transcript) {
-              if (currentShortcut === "f5") {
+              if (currentShortcut === "send") {
                 const deliverAs = activeCtx?.isIdle?.() === false ? { deliverAs: "followUp" as const } : undefined;
                 pi.sendUserMessage(transcript, deliverAs);
                 activeCtx?.ui.notify(`Transcript sent`, "info");
@@ -129,14 +136,14 @@ export default function (pi: ExtensionAPI) {
             return;
           }
 
-          const isF10 = matchesKey(data, PUSH_TO_TALK_KEY) && f10Debounce.allow();
-          const isF5 = matchesKey(data, "f5") && f5Debounce.allow();
-          if (isF10) {
-            this.toggleVoiceCapture("f10");
+          const isInsertTranscript = matchesKey(data, shortcutConfig.insertTranscriptKey) && insertTranscriptDebounce.allow();
+          const isSendTranscript = matchesKey(data, shortcutConfig.sendTranscriptKey) && sendTranscriptDebounce.allow();
+          if (isInsertTranscript) {
+            this.toggleVoiceCapture("insert");
             return;
           }
-          if (isF5) {
-            this.toggleVoiceCapture("f5");
+          if (isSendTranscript) {
+            this.toggleVoiceCapture("send");
             return;
           }
 
@@ -160,7 +167,10 @@ export default function (pi: ExtensionAPI) {
     handler: async (_args, ctx) => {
       activeCtx = ctx;
       syncStatus(ctx);
-      ctx.ui.notify(`Push-to-talk ready: tap ${PUSH_TO_TALK_KEY} twice`, "info");
+      ctx.ui.notify(
+        `Push-to-talk ready: ${shortcutConfig.sendTranscriptKey.toUpperCase()} sends directly; ${shortcutConfig.insertTranscriptKey.toUpperCase()} inserts into the editor`,
+        "info",
+      );
     },
   });
 }
