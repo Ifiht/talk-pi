@@ -5,7 +5,8 @@ export type SpokenReplyStatusKind =
   | "playing"
   | "deferred"
   | "success"
-  | "failure";
+  | "failure"
+  | "stopped";
 
 export function formatSpokenReplyStatus(kind: SpokenReplyStatusKind, detail?: string): string {
   switch (kind) {
@@ -23,5 +24,7 @@ export function formatSpokenReplyStatus(kind: SpokenReplyStatusKind, detail?: st
       return `Spoken reply played${detail ? `: ${detail}` : ""}`;
     case "failure":
       return `Spoken reply failed${detail ? `: ${detail}` : ""}`;
+    case "stopped":
+      return `Spoken reply stopped${detail ? `: ${detail}` : ""}`;
   }
 }

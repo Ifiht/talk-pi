@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 
 const defaultCreatePlayer = createRequire(import.meta.url)("play-sound") as (opts?: Record<string, unknown>) => {
@@ -6,22 +7,76 @@ const defaultCreatePlayer = createRequire(import.meta.url)("play-sound") as (opt
 
 export type WavPlayer = {
   play(filePath: string): Promise<void>;
+  stop(): Promise<void>;
+  isPlaying(): boolean;
 };
 
 export function createWavPlayer(createPlayer = defaultCreatePlayer): WavPlayer {
   const player = createPlayer({});
+  let activeProcess: { pid?: number; kill(signal?: NodeJS.Signals | number): boolean; once(event: "close", listener: () => void): void } | undefined;
+
+  const clear = () => {
+    activeProcess = undefined;
+  };
 
   return {
+    isPlaying(): boolean {
+      return activeProcess !== undefined;
+    },
     play(filePath: string): Promise<void> {
       return new Promise((resolve, reject) => {
-        player.play(filePath, (error?: Error | null) => {
+        const process = player.play(filePath, (error?: Error | null) => {
+          if (activeProcess === process) {
+            clear();
+          }
           if (error) {
             reject(error);
             return;
           }
           resolve();
-        });
+        }) as typeof activeProcess;
+
+        if (!process) {
+          clear();
+          reject(new Error("Unable to spawn audio player process"));
+          return;
+        }
+
+        activeProcess = process;
       });
+    },
+    async stop(): Promise<void> {
+      const childProcess = activeProcess;
+      if (!childProcess) return;
+
+      clear();
+      const pid = childProcess.pid;
+      if (!pid) {
+        try {
+          childProcess.kill("SIGKILL");
+        } catch {
+          // ignore stop errors; the process is being torn down
+        }
+        return;
+      }
+
+      if (globalThis.process.platform === "win32") {
+        await new Promise<void>((resolve) => {
+          const child = spawn("taskkill", ["/PID", String(pid), "/T", "/F"], {
+            stdio: "ignore",
+            windowsHide: true,
+          });
+          child.once("error", () => resolve());
+          child.once("exit", () => resolve());
+        });
+        return;
+      }
+
+      try {
+        childProcess.kill("SIGKILL");
+      } catch {
+        // ignore stop errors; the process is being torn down
+      }
     },
   };
 }

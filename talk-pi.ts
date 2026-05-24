@@ -136,6 +136,11 @@ export default function (pi: ExtensionAPI) {
             return;
           }
 
+          if (matchesKey(data, "escape") && playbackQueue.isPlaying()) {
+            void playbackQueue.stop().then(() => syncStatus(activeCtx ?? ctx));
+            return;
+          }
+
           const isInsertTranscript = matchesKey(data, shortcutConfig.insertTranscriptKey) && insertTranscriptDebounce.allow();
           const isSendTranscript = matchesKey(data, shortcutConfig.sendTranscriptKey) && sendTranscriptDebounce.allow();
           if (isInsertTranscript) {
