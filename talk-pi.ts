@@ -2,6 +2,7 @@ import { CustomEditor } from "@mariozechner/pi-coding-agent";
 import { isKeyRelease, matchesKey } from "@mariozechner/pi-tui";
 import { insertTranscriptIntoEditor } from "./src/input/editor-insert.ts";
 import { getTalkPiShortcutConfig } from "./src/input/shortcut-config.ts";
+import { runVoiceShortcut } from "./src/input/voice-shortcut-interrupt.ts";
 import { createShortcutDebounce } from "./src/input/f5-shortcut.ts";
 import { extractAssistantReplyText } from "./src/tts/assistant-reply.ts";
 import { createPlaybackQueue } from "./src/tts/playback-queue.ts";
@@ -136,14 +137,27 @@ export default function (pi: ExtensionAPI) {
             return;
           }
 
+          if (matchesKey(data, "escape") && playbackQueue.isPlaying()) {
+            void playbackQueue.stop().then(() => syncStatus(activeCtx ?? ctx));
+            return;
+          }
+
           const isInsertTranscript = matchesKey(data, shortcutConfig.insertTranscriptKey) && insertTranscriptDebounce.allow();
           const isSendTranscript = matchesKey(data, shortcutConfig.sendTranscriptKey) && sendTranscriptDebounce.allow();
           if (isInsertTranscript) {
-            this.toggleVoiceCapture("insert");
+            void runVoiceShortcut("insert", {
+              isPlaybackPlaying: () => playbackQueue.isPlaying(),
+              stopPlayback: () => playbackQueue.stop().then(() => syncStatus(activeCtx ?? ctx)),
+              toggleVoiceCapture: (shortcut) => this.toggleVoiceCapture(shortcut),
+            });
             return;
           }
           if (isSendTranscript) {
-            this.toggleVoiceCapture("send");
+            void runVoiceShortcut("send", {
+              isPlaybackPlaying: () => playbackQueue.isPlaying(),
+              stopPlayback: () => playbackQueue.stop().then(() => syncStatus(activeCtx ?? ctx)),
+              toggleVoiceCapture: (shortcut) => this.toggleVoiceCapture(shortcut),
+            });
             return;
           }
 
