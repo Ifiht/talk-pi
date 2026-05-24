@@ -1,6 +1,8 @@
 import { CustomEditor } from "@mariozechner/pi-coding-agent";
 import { isKeyRelease, matchesKey } from "@mariozechner/pi-tui";
-import { createVoiceCaptureSession, PUSH_TO_TALK_KEY } from "./src/voice/voice-capture";
+import { extractAssistantReplyText } from "./src/tts/assistant-reply.ts";
+import { createPlaybackQueue } from "./src/tts/playback-queue.ts";
+import { createVoiceCaptureSession, PUSH_TO_TALK_KEY } from "./src/voice/voice-capture.ts";
 
 type ExtensionContext = {
   ui: {
@@ -14,7 +16,7 @@ type ExtensionContext = {
 };
 
 type ExtensionAPI = {
-  on(event: "session_start", handler: (event: unknown, ctx: ExtensionContext) => void | Promise<void>): void;
+  on(event: string, handler: (event: any, ctx: ExtensionContext) => void | Promise<void>): void;
   registerCommand?(name: string, command: { description: string; handler: (args: string, ctx: ExtensionContext) => void | Promise<void> }): void;
 };
 
@@ -25,10 +27,28 @@ export default function (pi: ExtensionAPI) {
     activeCtx?.ui.notify(message, level);
   });
 
+  let speechStatus = "";
+
+  const playbackQueue = createPlaybackQueue({
+    isRecordingBlocked: () => voiceSession.status !== "idle",
+    onNotify: (message, level) => {
+      activeCtx?.ui.notify(message, level);
+    },
+    onStatus: (message) => {
+      speechStatus = message;
+      if (activeCtx) {
+        syncStatus(activeCtx);
+      }
+    },
+  });
+
   const syncStatus = (ctx: ExtensionContext) => {
     const status = voiceSession.status;
     const message = voiceSession.message;
-    ctx.ui.setStatus("talk-pi", `push-to-talk:${status}${message ? `:${message.toLowerCase().replace(/\s+/g, "-")}` : ""}`);
+    const base = `push-to-talk:${status}${message ? `:${message.toLowerCase().replace(/\s+/g, "-")}` : ""}`;
+    const full = speechStatus ? `${base}:${speechStatus.toLowerCase().replace(/\s+/g, "-")}` : base;
+    void playbackQueue.setRecordingBlocked(status !== "idle");
+    ctx.ui.setStatus("talk-pi", full);
   };
 
   pi.on("session_start", async (_event, ctx) => {
@@ -89,6 +109,13 @@ export default function (pi: ExtensionAPI) {
 
       return new PushToTalkEditor();
     });
+  });
+
+  pi.on("message_end", async (event) => {
+    const text = extractAssistantReplyText(event?.message);
+    if (text) {
+      void playbackQueue.enqueue(text);
+    }
   });
 
   pi.registerCommand?.("talk-pi", {

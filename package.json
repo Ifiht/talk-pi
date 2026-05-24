@@ -4,6 +4,7 @@
   "type": "module",
   "dependencies": {
     "node-record-lpcm16-ts": "^1.0.0",
+    "play-sound": "^1.1.6",
     "whisper-cpp-node": "^0.2.12"
   },
   "devDependencies": {
