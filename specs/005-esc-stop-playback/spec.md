@@ -44,6 +44,7 @@ As a user, I can press Esc when no spoken response is active without causing err
 - Esc is pressed multiple times while playback is stopping: only the first press should matter.
 - Esc is pressed while playback is paused or already finished: no visible disruption should occur.
 - Esc is pressed while a reply is queued but not yet audible: the queued spoken reply should not start automatically.
+- The user presses F9 or F10 while spoken playback is active: the current audio should stop before voice capture continues.
 - The visible assistant message must remain even if speech output is stopped.
 - If playback stops due to Esc, the user should still be able to continue using the terminal immediately.
 
@@ -59,6 +60,7 @@ Every requirement MUST be testable and traceable to at least one acceptance scen
 - **FR-004**: System MUST ignore Esc for this feature when no spoken assistant response is playing.
 - **FR-005**: System MUST leave the terminal input usable immediately after playback is stopped.
 - **FR-006**: System MUST not remove, modify, or resend the visible assistant text when playback is stopped.
+- **FR-007**: System MUST stop the current spoken response before starting voice capture when the user presses F9 or F10.
 
 ### Key Entities *(include if feature involves data)*
 

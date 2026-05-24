@@ -76,6 +76,7 @@
 
 - [X] T011 [P] Validate `specs/005-esc-stop-playback/quickstart.md` against the implemented Esc stop flow and update any steps that no longer match
 - [X] T012 Run focused playback interruption tests in `tests/unit/playback-queue-stop.test.ts`, `tests/unit/playback-queue-stop-idle.test.ts`, `tests/integration/esc-stop-playback.test.ts`, and `tests/integration/esc-idle-noop.test.ts`
+- [X] T013 [P] Update F9/F10 voice shortcut handling to stop active playback before starting capture in `src/input/voice-shortcut-interrupt.ts` and `talk-pi.ts`
 
 ---
 
