@@ -70,7 +70,7 @@ export function createVoiceCaptureSession(
       const result = await transcribe(filePath);
       const text = String(result?.text ?? "").trim();
       if (!text) {
-        set("idle", "Ready");
+        set("idle", "No speech detected");
         notify("No speech detected", "warning");
         return undefined;
       }

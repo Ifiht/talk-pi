@@ -5,9 +5,9 @@ import { runVoiceShortcut } from "./src/input/voice-shortcut-interrupt.ts";
 import { createShortcutDebounce } from "./src/input/f5-shortcut.ts";
 import { createMuteState } from "./src/ui/mute-state.ts";
 import { openUnifiedTalkMenu } from "./src/ui/unified-talk-menu.ts";
+import { formatFooterStatusFromState } from "./src/ui/footer-status.ts";
 import { extractAssistantReplyText } from "./src/tts/assistant-reply.ts";
 import { createPlaybackQueue } from "./src/tts/playback-queue.ts";
-import { formatTranscriptionStatus } from "./src/ui/transcription-status.ts";
 import { createVoiceCaptureSession } from "./src/voice/voice-capture.ts";
 import { loadTalkPiConfig } from "./src/config.ts";
 
@@ -77,39 +77,26 @@ export default function (pi: ExtensionAPI) {
     piper: config.piper,
   });
 
-  const getBaseStatusText = (): string => {
-    const status = voiceSession.status;
-    const message = voiceSession.message;
-    const normalizedStatus =
-      status === "recording"
-        ? "recording"
-        : status === "transcribing"
-          ? "transcribing"
-          : status === "error"
-            ? "error"
-            : message.toLowerCase().includes("no speech detected")
-              ? "no-speech"
-              : message.toLowerCase().includes("transcript ready")
-                ? "ready"
-                : "idle";
-    const voiceStatus = formatTranscriptionStatus(normalizedStatus, message);
-    const muteText = muteState.isMuted() ? "Muted" : "Unmuted";
-    return speechStatus ? `${voiceStatus} | ${speechStatus} | ${muteText}` : `${voiceStatus} | ${muteText}`;
-  };
+  const getFooterStatusText = (): string => formatFooterStatusFromState({
+    voiceStatus: voiceSession.status,
+    voiceMessage: voiceSession.message,
+    speechStatus,
+    muted: muteState.isMuted(),
+    playing: playbackQueue.isPlaying(),
+  });
 
   const getMenuStatusText = (): string => {
-    const base = getBaseStatusText();
+    const base = getFooterStatusText();
     return `${base} | ${shortcutConfig.sendTranscriptKey.toUpperCase()} sends directly | ${shortcutConfig.insertTranscriptKey.toUpperCase()} inserts into editor`;
   };
 
   const syncStatus = (ctx: ExtensionContext) => {
     const status = voiceSession.status;
-    const full = getBaseStatusText().toLowerCase().replace(/\s+/g, "-");
     void playbackQueue.setRecordingBlocked(status !== "idle");
     if (playbackQueue.isMuted() !== muteState.isMuted()) {
       void playbackQueue.setMuted(muteState.isMuted());
     }
-    ctx.ui.setStatus("talk-pi", full);
+    ctx.ui.setStatus("talk-pi", getFooterStatusText());
   };
 
   const setMuteState = async (muted: boolean, ctx: ExtensionContext): Promise<void> => {
