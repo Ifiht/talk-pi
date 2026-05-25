@@ -1,11 +1,13 @@
 import { matchesKey } from "@earendil-works/pi-tui";
-import { startMicCapture, type MicCapture } from "./offline-recorder";
+import { cleanupCapture, startMicCapture, type MicCapture } from "./offline-recorder";
 import { transcribeAudioFile } from "./offline-whisper";
 
 const DEFAULT_PUSH_TO_TALK_KEY = "f10";
 
 export type VoiceCaptureOptions = {
   pushToTalkKey?: string;
+  captureFactory?: () => MicCapture;
+  transcribe?: typeof transcribeAudioFile;
 };
 
 export type VoiceCaptureStatus = "idle" | "recording" | "transcribing" | "error";
@@ -26,6 +28,8 @@ export function createVoiceCaptureSession(
   options: VoiceCaptureOptions = {},
 ): VoiceCaptureSession {
   const pushToTalkKey = options.pushToTalkKey?.trim().toLowerCase() || DEFAULT_PUSH_TO_TALK_KEY;
+  const captureFactory = options.captureFactory ?? startMicCapture;
+  const transcribe = options.transcribe ?? transcribeAudioFile;
   let status: VoiceCaptureStatus = "idle";
   let message = "Ready";
   let capture: MicCapture | undefined;
@@ -39,7 +43,7 @@ export function createVoiceCaptureSession(
   const start = async () => {
     if (active) return;
     try {
-      capture = startMicCapture();
+      capture = captureFactory();
       active = true;
       set("recording", "Recording... hold key");
       notify("Voice recording started", "info");
@@ -55,13 +59,14 @@ export function createVoiceCaptureSession(
   const stop = async (): Promise<string | undefined> => {
     if (!capture || !active) return undefined;
     set("transcribing", "Transcribing WAV to text...");
-    await capture.stop();
-    const filePath = capture.filePath;
+    const currentCapture = capture;
+    const filePath = currentCapture.filePath;
     capture = undefined;
     active = false;
-
     try {
-      const result = await transcribeAudioFile(filePath);
+      await currentCapture.stop();
+
+      const result = await transcribe(filePath);
       const text = String(result?.text ?? "").trim();
       if (!text) {
         set("idle", "Ready");
@@ -76,15 +81,23 @@ export function createVoiceCaptureSession(
       set("error", "Transcription failed");
       notify(error instanceof Error ? error.message : "Transcription failed", "error");
       return undefined;
+    } finally {
+      await cleanupCapture(filePath);
     }
   };
 
   const dispose = async () => {
     if (capture) {
-      await capture.stop().catch(() => undefined);
+      const currentCapture = capture;
+      const filePath = currentCapture.filePath;
+      capture = undefined;
+      active = false;
+      await currentCapture.stop().catch(() => undefined);
+      await cleanupCapture(filePath);
+    } else {
+      capture = undefined;
+      active = false;
     }
-    capture = undefined;
-    active = false;
     set("idle", "Ready");
   };
 

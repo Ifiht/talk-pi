@@ -32,6 +32,8 @@ async function run() {
   });
 
   assert.equal(fs.existsSync(result.audioPath), true);
+  await result.cleanup?.();
+  assert.equal(fs.existsSync(result.audioPath), false);
 }
 
 run().catch((error) => {

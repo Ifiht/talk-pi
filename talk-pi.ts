@@ -4,8 +4,8 @@ import { insertTranscriptIntoEditor } from "./src/input/editor-insert.ts";
 import { getTalkPiShortcutConfig } from "./src/input/shortcut-config.ts";
 import { runVoiceShortcut } from "./src/input/voice-shortcut-interrupt.ts";
 import { createShortcutDebounce } from "./src/input/f5-shortcut.ts";
-import { openMuteMenu } from "./src/ui/mute-menu.ts";
 import { createMuteState } from "./src/ui/mute-state.ts";
+import { openUnifiedTalkMenu } from "./src/ui/unified-talk-menu.ts";
 import { extractAssistantReplyText } from "./src/tts/assistant-reply.ts";
 import { createPlaybackQueue } from "./src/tts/playback-queue.ts";
 import { formatTranscriptionStatus } from "./src/ui/transcription-status.ts";
@@ -74,7 +74,7 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  const syncStatus = (ctx: ExtensionContext) => {
+  const getBaseStatusText = (): string => {
     const status = voiceSession.status;
     const message = voiceSession.message;
     const normalizedStatus =
@@ -90,9 +90,18 @@ export default function (pi: ExtensionAPI) {
                 ? "ready"
                 : "idle";
     const voiceStatus = formatTranscriptionStatus(normalizedStatus, message);
-    const muteSuffix = muteState.isMuted() ? ":muted" : "";
-    const base = `${voiceStatus.toLowerCase().replace(/\s+/g, "-")}${muteSuffix}`;
-    const full = speechStatus ? `${base}:${speechStatus.toLowerCase().replace(/\s+/g, "-")}` : base;
+    const muteText = muteState.isMuted() ? "Muted" : "Unmuted";
+    return speechStatus ? `${voiceStatus} | ${speechStatus} | ${muteText}` : `${voiceStatus} | ${muteText}`;
+  };
+
+  const getMenuStatusText = (): string => {
+    const base = getBaseStatusText();
+    return `${base} | ${shortcutConfig.sendTranscriptKey.toUpperCase()} sends directly | ${shortcutConfig.insertTranscriptKey.toUpperCase()} inserts into editor`;
+  };
+
+  const syncStatus = (ctx: ExtensionContext) => {
+    const status = voiceSession.status;
+    const full = getBaseStatusText().toLowerCase().replace(/\s+/g, "-");
     void playbackQueue.setRecordingBlocked(status !== "idle");
     if (playbackQueue.isMuted() !== muteState.isMuted()) {
       void playbackQueue.setMuted(muteState.isMuted());
@@ -107,7 +116,6 @@ export default function (pi: ExtensionAPI) {
       muteState.unmute();
     }
     await playbackQueue.setMuted(muted);
-    ctx.ui.notify(muted ? "Extension muted" : "Extension unmuted", "info");
     syncStatus(ctx);
   };
 
@@ -214,30 +222,18 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.registerCommand?.("talk-pi", {
-    description: "Show push-to-talk status",
+    description: "Open the unified talk menu",
     handler: async (_args, ctx) => {
       activeCtx = ctx;
       syncStatus(ctx);
-      ctx.ui.notify(
-        `Push-to-talk ready: ${shortcutConfig.sendTranscriptKey.toUpperCase()} sends directly; ${shortcutConfig.insertTranscriptKey.toUpperCase()} inserts into the editor`,
-        "info",
-      );
-    },
-  });
-
-  pi.registerCommand?.("talk-pi-menu", {
-    description: "Open the mute menu",
-    handler: async (_args, ctx) => {
-      activeCtx = ctx;
+      await openUnifiedTalkMenu(ctx, {
+        isMuted: () => muteState.isMuted(),
+        setMuted: async (nextMuted) => {
+          await setMuteState(nextMuted, ctx);
+        },
+        getStatusText: () => getMenuStatusText(),
+      });
       syncStatus(ctx);
-      const choice = await openMuteMenu(ctx, muteState);
-      if (choice === "mute") {
-        await setMuteState(true, ctx);
-      } else if (choice === "unmute") {
-        await setMuteState(false, ctx);
-      } else {
-        syncStatus(ctx);
-      }
     },
   });
 }

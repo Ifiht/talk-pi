@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import { formatSpokenReplyStatus } from "../ui/spoken-reply-status.ts";
 import { normalizeSpokenText } from "./spoken-text.ts";
+import { createSpeechJob, type SpeechJobState } from "./speech-job.ts";
 import { synthesizeSpeechToWav, type PiperClientOptions } from "./piper-client.ts";
 import { createWavPlayer, type WavPlayer } from "./wav-player.ts";
 
@@ -65,51 +66,63 @@ export function createPlaybackQueue(options: PlaybackQueueOptions = {}): Playbac
           continue;
         }
 
+        const job = createSpeechJob(text);
         let audioPath: string | undefined;
+        let jobState: SpeechJobState = "complete";
         try {
+          job.setState("synthesizing");
           status("synthesizing", text.slice(0, 32));
           const result = await synthesize(text);
           audioPath = result.audioPath;
           currentAudioPath = audioPath;
-          if (stopping) {
+          job.attachAudio(audioPath, result.cleanup);
+
+          if (stopping || muteStopping) {
+            jobState = "interrupted";
+            if (muteStopping) {
+              muteStopping = false;
+            }
             status("stopped", pathBase(audioPath));
             break;
           }
-          if (muteStopping) {
-            muteStopping = false;
-            status("stopped", pathBase(audioPath));
-            break;
-          }
+
           if (isBlocked()) {
+            jobState = "interrupted";
             queue.unshift(item);
             status(muted ? "deferred" : "stopped", pathBase(audioPath));
             break;
           }
+
           status("ready", pathBase(audioPath));
           activePlayback = true;
+          job.setState("playing");
           status("playing", pathBase(audioPath));
           await player.play(audioPath);
           activePlayback = false;
           currentAudioPath = undefined;
-          if (stopping) {
+
+          if (stopping || muteStopping) {
+            jobState = "interrupted";
+            if (muteStopping) {
+              muteStopping = false;
+            }
             status("stopped", pathBase(audioPath));
             break;
           }
-          if (muteStopping) {
-            muteStopping = false;
-            status("stopped", pathBase(audioPath));
-            break;
-          }
+
           if (isBlocked()) {
+            jobState = "interrupted";
             queue.unshift(item);
             status(muted ? "deferred" : "stopped", pathBase(audioPath));
             break;
           }
+
           status("success", pathBase(audioPath));
         } catch (error) {
           activePlayback = false;
           currentAudioPath = undefined;
-          if (stopping) {
+          jobState = stopping || muteStopping ? "interrupted" : "failed";
+          if (stopping || muteStopping) {
             status("stopped", audioPath ? pathBase(audioPath) : undefined);
             break;
           }
@@ -119,6 +132,7 @@ export function createPlaybackQueue(options: PlaybackQueueOptions = {}): Playbac
           if (audioPath) {
             await fs.unlink(audioPath).catch(() => undefined);
           }
+          await job.finalize(jobState);
         }
       }
     } finally {

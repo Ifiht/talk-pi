@@ -33,6 +33,8 @@ async function run() {
   assert.deepEqual(calls[0]?.args.slice(0, 4), ["--model", "voice.onnx", "--output_file", result.audioPath]);
   assert.equal(fs.existsSync(result.audioPath), true);
   assert.equal(fs.readFileSync(result.audioPath, "utf8"), "wav:hello world");
+  await result.cleanup?.();
+  assert.equal(fs.existsSync(result.audioPath), false);
 }
 
 run().catch((error) => {

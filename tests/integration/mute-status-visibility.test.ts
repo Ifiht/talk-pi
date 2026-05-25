@@ -1,26 +1,37 @@
 import assert from "node:assert/strict";
-import { createMuteState } from "../../src/ui/mute-state.ts";
-import { openMuteMenu } from "../../src/ui/mute-menu.ts";
+import { openUnifiedTalkMenu } from "../../src/ui/unified-talk-menu.ts";
 
 async function run() {
-  const state = createMuteState(true);
   const titles: string[] = [];
+  let muted = true;
 
   const ctx = {
     ui: {
-      async select(title: string) {
+      async select(title: string, options: string[]) {
         titles.push(title);
-        return "Close";
+        return options[2];
       },
       notify: (_message: string, _level: "info" | "warning" | "error") => undefined,
     },
   };
 
-  await openMuteMenu(ctx, state);
+  await openUnifiedTalkMenu(ctx, {
+    isMuted: () => muted,
+    setMuted: async (nextMuted) => {
+      muted = nextMuted;
+    },
+    getStatusText: () => (muted ? "Muted" : "Ready"),
+  });
   assert.ok(titles[0]?.includes("Muted"));
 
-  state.unmute();
-  await openMuteMenu(ctx, state);
+  muted = false;
+  await openUnifiedTalkMenu(ctx, {
+    isMuted: () => muted,
+    setMuted: async (nextMuted) => {
+      muted = nextMuted;
+    },
+    getStatusText: () => (muted ? "Muted" : "Ready"),
+  });
   assert.ok(titles[1]?.includes("Unmuted"));
 }
 

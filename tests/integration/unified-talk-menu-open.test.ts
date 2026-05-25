@@ -2,20 +2,18 @@ import assert from "node:assert/strict";
 import { openUnifiedTalkMenu } from "../../src/ui/unified-talk-menu.ts";
 
 async function run() {
+  const choices = ["Status", "Mute", "Close"];
   const titles: string[] = [];
   const optionSets: string[][] = [];
-  const notifications: string[] = [];
   let muted = false;
+  const notifications: string[] = [];
 
   const ctx = {
     ui: {
       async select(title: string, options: string[]) {
         titles.push(title);
         optionSets.push(options);
-        if (options[0] === "Status") {
-          return "Status";
-        }
-        return muted ? "Unmute" : "Mute";
+        return choices.shift();
       },
       notify(message: string) {
         notifications.push(message);
@@ -28,12 +26,12 @@ async function run() {
     setMuted: async (nextMuted) => {
       muted = nextMuted;
     },
-    getStatusText: () => (muted ? "Muted" : "Ready"),
+    getStatusText: () => muted ? "Muted | F9 sends directly | F10 inserts into editor" : "Ready | F9 sends directly | F10 inserts into editor",
   });
 
   assert.ok(titles[0]?.includes("Unmuted"));
   assert.deepEqual(optionSets[0], ["Status", "Mute", "Close"]);
-  assert.ok(notifications.includes("Status: Ready"));
+  assert.ok(notifications.includes("Status: Ready | F9 sends directly | F10 inserts into editor"));
   assert.ok(notifications.includes("Extension muted"));
   assert.equal(muted, true);
 }

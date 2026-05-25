@@ -3,6 +3,7 @@ import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { once } from "node:events";
+import { setTimeout as delay } from "node:timers/promises";
 import { spawnSync } from "node:child_process";
 import { record } from "node-record-lpcm16-ts";
 
@@ -68,5 +69,18 @@ export function startMicCapture(): MicCapture {
 }
 
 export async function cleanupCapture(filePath: string): Promise<void> {
-  await fsp.unlink(filePath).catch(() => undefined);
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      await fsp.unlink(filePath);
+      return;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return;
+      }
+      if (attempt === 4) {
+        return;
+      }
+      await delay(50 * (attempt + 1));
+    }
+  }
 }

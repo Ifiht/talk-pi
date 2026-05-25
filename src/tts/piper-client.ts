@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
+import { createTemporaryWavFile, defaultTemporaryWavRoot } from "./temp-wav.ts";
 
 export type PiperClientOptions = {
   binaryPath?: string;
@@ -13,6 +14,7 @@ export type PiperClientOptions = {
 
 export type PiperSynthesisResult = {
   audioPath: string;
+  cleanup?: () => Promise<void>;
 };
 
 async function pathExists(candidate: string): Promise<boolean> {
@@ -53,7 +55,9 @@ async function resolvePiperBinaryPath(candidate: string): Promise<string> {
     }
   }
 
-  const lookup = process.platform === "win32" ? spawnSync("where", [resolved], { stdio: "pipe" }) : spawnSync("sh", ["-lc", `command -v ${resolved}`], { stdio: "pipe" });
+  const lookup = process.platform === "win32"
+    ? spawnSync("where", [resolved], { stdio: "pipe" })
+    : spawnSync("sh", ["-lc", `command -v ${resolved}`], { stdio: "pipe" });
   const stdout = String(lookup.stdout ?? "").trim();
   if (lookup.status === 0 && stdout) {
     return stdout.split(/\r?\n/)[0]!.trim();
@@ -93,16 +97,7 @@ async function defaultModelPath(): Promise<string> {
 }
 
 function defaultOutputDir(): string {
-  return process.env.TALK_PI_TTS_OUTPUT_DIR ?? path.join(os.homedir(), ".pi", "tts", "output");
-}
-
-function safeName(text: string): string {
-  return text
-    .slice(0, 24)
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "reply";
+  return defaultTemporaryWavRoot();
 }
 
 export async function synthesizeSpeechToWav(
@@ -116,41 +111,44 @@ export async function synthesizeSpeechToWav(
 
   const binaryPath = await resolvePiperBinaryPath(options.binaryPath ?? defaultBinaryPath());
   const modelPath = options.modelPath ?? await defaultModelPath();
-  const outputDir = options.outputDir ?? defaultOutputDir();
-  const fileName = `reply-${Date.now()}-${safeName(replyText)}.wav`;
-  const audioPath = path.join(outputDir, fileName);
+  const tempFile = await createTemporaryWavFile(options.outputDir ?? defaultOutputDir());
 
-  await fs.mkdir(outputDir, { recursive: true });
-  await fs.unlink(audioPath).catch(() => undefined);
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const spawnImpl = options.spawnImpl ?? spawn;
+      const child = spawnImpl(binaryPath, ["--model", modelPath, "--output_file", tempFile.path], {
+        env: options.env ?? process.env,
+        stdio: ["pipe", "pipe", "pipe"],
+      });
 
-  await new Promise<void>((resolve, reject) => {
-    const spawnImpl = options.spawnImpl ?? spawn;
-    const child = spawnImpl(binaryPath, ["--model", modelPath, "--output_file", audioPath], {
-      env: options.env ?? process.env,
-      stdio: ["pipe", "pipe", "pipe"],
+      let stderr = "";
+      child.stderr.on("data", (chunk) => {
+        stderr += String(chunk);
+      });
+
+      child.on("error", reject);
+      child.on("close", (code) => {
+        if (code !== 0) {
+          reject(new Error(stderr.trim() || `Piper failed with code ${code}`));
+          return;
+        }
+        resolve();
+      });
+
+      child.stdin.end(`${replyText}\n`);
     });
 
-    let stderr = "";
-    child.stderr.on("data", (chunk) => {
-      stderr += String(chunk);
-    });
+    const stats = await fs.stat(tempFile.path);
+    if (!stats.size) {
+      throw new Error("Piper produced empty WAV file");
+    }
 
-    child.on("error", reject);
-    child.on("close", (code) => {
-      if (code !== 0) {
-        reject(new Error(stderr.trim() || `Piper failed with code ${code}`));
-        return;
-      }
-      resolve();
-    });
-
-    child.stdin.end(`${replyText}\n`);
-  });
-
-  const stats = await fs.stat(audioPath);
-  if (!stats.size) {
-    throw new Error("Piper produced empty WAV file");
+    return {
+      audioPath: tempFile.path,
+      cleanup: () => tempFile.cleanup(),
+    };
+  } catch (error) {
+    await tempFile.cleanup().catch(() => undefined);
+    throw error;
   }
-
-  return { audioPath };
 }
