@@ -1,13 +1,14 @@
 import { matchesKey } from "@earendil-works/pi-tui";
 import { cleanupCapture, startMicCapture, type MicCapture } from "./offline-recorder";
-import { transcribeAudioFile } from "./offline-whisper";
+import { transcribeAudioFile, type WhisperConfig, type WhisperResult } from "./offline-whisper";
 
 const DEFAULT_PUSH_TO_TALK_KEY = "f10";
 
 export type VoiceCaptureOptions = {
   pushToTalkKey?: string;
+  whisper?: WhisperConfig;
   captureFactory?: () => MicCapture;
-  transcribe?: typeof transcribeAudioFile;
+  transcribe?: (filePath: string) => Promise<WhisperResult>;
 };
 
 export type VoiceCaptureStatus = "idle" | "recording" | "transcribing" | "error";
@@ -29,7 +30,7 @@ export function createVoiceCaptureSession(
 ): VoiceCaptureSession {
   const pushToTalkKey = options.pushToTalkKey?.trim().toLowerCase() || DEFAULT_PUSH_TO_TALK_KEY;
   const captureFactory = options.captureFactory ?? startMicCapture;
-  const transcribe = options.transcribe ?? transcribeAudioFile;
+  const transcribe = options.transcribe ?? ((filePath: string) => transcribeAudioFile(filePath, options.whisper));
   let status: VoiceCaptureStatus = "idle";
   let message = "Ready";
   let capture: MicCapture | undefined;

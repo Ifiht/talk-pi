@@ -1,14 +1,10 @@
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
-import { createTemporaryWavFile, defaultTemporaryWavRoot } from "./temp-wav.ts";
+import { createTemporaryWavFile } from "./temp-wav.ts";
+import { resolvePiperConfig, type PiperConfigInput } from "./piper-config.ts";
 
-export type PiperClientOptions = {
-  binaryPath?: string;
-  modelPath?: string;
-  outputDir?: string;
-  env?: NodeJS.ProcessEnv;
+export type PiperClientOptions = PiperConfigInput & {
   spawnImpl?: typeof spawn;
 };
 
@@ -26,10 +22,6 @@ async function pathExists(candidate: string): Promise<boolean> {
   }
 }
 
-function defaultBinaryPath(): string {
-  return process.env.TALK_PI_PIPER_BIN ?? "piper";
-}
-
 async function resolvePiperBinaryPath(candidate: string): Promise<string> {
   const resolved = candidate.trim();
   if (!resolved) {
@@ -38,21 +30,6 @@ async function resolvePiperBinaryPath(candidate: string): Promise<string> {
 
   if (path.isAbsolute(resolved) && (await pathExists(resolved))) {
     return resolved;
-  }
-
-  const commonWindowsPaths = process.platform === "win32"
-    ? [
-        "C:\\tools\\piper\\piper\\piper.exe",
-        "C:\\tools\\piper\\piper.exe",
-        "C:\\Program Files\\Piper\\piper.exe",
-        "C:\\Program Files (x86)\\Piper\\piper.exe",
-      ]
-    : [];
-
-  for (const guess of commonWindowsPaths) {
-    if (await pathExists(guess)) {
-      return guess;
-    }
   }
 
   const lookup = process.platform === "win32"
@@ -68,36 +45,8 @@ async function resolvePiperBinaryPath(candidate: string): Promise<string> {
   }
 
   throw new Error(
-    `Piper binary not found: ${resolved}. Set TALK_PI_PIPER_BIN to full path, e.g. C:\\tools\\piper\\piper\\piper.exe`,
+    `Piper binary not found: ${resolved}. Set TALK_PI_PIPER_BIN or add piper to PATH.`,
   );
-}
-
-async function defaultModelPath(): Promise<string> {
-  const envModel = process.env.TALK_PI_PIPER_MODEL_PATH?.trim();
-  if (envModel) return envModel;
-
-  const candidates = process.platform === "win32"
-    ? [
-        "C:\\tools\\piper\\voices\\pt_BR-faber-medium.onnx",
-        "C:\\tools\\piper\\voices\\en_US-lessac-medium.onnx",
-        "C:\\tools\\piper\\voices\\pt_BR-edresson-low.onnx",
-        path.join(os.homedir(), ".pi", "tts", "piper", "pt_BR-faber-medium.onnx"),
-        path.join(os.homedir(), ".pi", "tts", "piper", "en_US-lessac-medium.onnx"),
-      ]
-    : [
-        path.join(os.homedir(), ".pi", "tts", "piper", "pt_BR-faber-medium.onnx"),
-        path.join(os.homedir(), ".pi", "tts", "piper", "en_US-lessac-medium.onnx"),
-      ];
-
-  for (const candidate of candidates) {
-    if (await pathExists(candidate)) return candidate;
-  }
-
-  return candidates[0]!;
-}
-
-function defaultOutputDir(): string {
-  return defaultTemporaryWavRoot();
 }
 
 export async function synthesizeSpeechToWav(
@@ -109,15 +58,16 @@ export async function synthesizeSpeechToWav(
     throw new Error("Cannot synthesize empty text");
   }
 
-  const binaryPath = await resolvePiperBinaryPath(options.binaryPath ?? defaultBinaryPath());
-  const modelPath = options.modelPath ?? await defaultModelPath();
-  const tempFile = await createTemporaryWavFile(options.outputDir ?? defaultOutputDir());
+  const config = resolvePiperConfig(options);
+  const binaryPath = await resolvePiperBinaryPath(config.binaryPath);
+  const modelPath = config.modelPath;
+  const tempFile = await createTemporaryWavFile(config.outputDir);
 
   try {
     await new Promise<void>((resolve, reject) => {
       const spawnImpl = options.spawnImpl ?? spawn;
       const child = spawnImpl(binaryPath, ["--model", modelPath, "--output_file", tempFile.path], {
-        env: options.env ?? process.env,
+        env: config.env,
         stdio: ["pipe", "pipe", "pipe"],
       });
 

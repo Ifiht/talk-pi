@@ -16,8 +16,14 @@ export type WhisperResult = {
   segments: Array<{ start: string; end: string; text: string }>;
 };
 
-function homeModelPath(): string {
-  return process.env.TALK_PI_WHISPER_MODEL_PATH ?? path.join(os.homedir(), ".pi", "models", "ggml-base.bin");
+export type WhisperConfig = {
+  modelPath?: string;
+  modelUrl?: string;
+  env?: NodeJS.ProcessEnv;
+};
+
+function homeModelPath(env: NodeJS.ProcessEnv = process.env): string {
+  return env.TALK_PI_WHISPER_MODEL_PATH ?? path.join(os.homedir(), ".pi", "models", "ggml-base.bin");
 }
 
 async function downloadFile(url: string, targetPath: string): Promise<void> {
@@ -57,8 +63,10 @@ async function downloadFile(url: string, targetPath: string): Promise<void> {
   });
 }
 
-export async function ensureWhisperModel(modelUrl = DEFAULT_MODEL_URL): Promise<string> {
-  const modelPath = homeModelPath();
+export async function ensureWhisperModel(options: WhisperConfig = {}): Promise<string> {
+  const env = options.env ?? process.env;
+  const modelPath = options.modelPath?.trim() || homeModelPath(env);
+  const modelUrl = options.modelUrl?.trim() || env.TALK_PI_WHISPER_MODEL_URL?.trim() || DEFAULT_MODEL_URL;
   try {
     const stats = await fsp.stat(modelPath);
     if (stats.size > 0) return modelPath;
@@ -73,8 +81,8 @@ export async function ensureWhisperModel(modelUrl = DEFAULT_MODEL_URL): Promise<
 let cachedContext: ReturnType<typeof createWhisperContext> | undefined;
 let cachedModelPath: string | undefined;
 
-export async function transcribeAudioFile(filePath: string): Promise<WhisperResult> {
-  const modelPath = await ensureWhisperModel();
+export async function transcribeAudioFile(filePath: string, options: WhisperConfig = {}): Promise<WhisperResult> {
+  const modelPath = await ensureWhisperModel(options);
   if (!cachedContext || cachedModelPath !== modelPath) {
     cachedContext?.free?.();
     cachedContext = createWhisperContext({ model: modelPath, use_gpu: false, no_prints: true });

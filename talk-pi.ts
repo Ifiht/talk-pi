@@ -1,7 +1,6 @@
 import { CustomEditor } from "@mariozechner/pi-coding-agent";
 import { isKeyRelease, matchesKey } from "@mariozechner/pi-tui";
 import { insertTranscriptIntoEditor } from "./src/input/editor-insert.ts";
-import { getTalkPiShortcutConfig } from "./src/input/shortcut-config.ts";
 import { runVoiceShortcut } from "./src/input/voice-shortcut-interrupt.ts";
 import { createShortcutDebounce } from "./src/input/f5-shortcut.ts";
 import { createMuteState } from "./src/ui/mute-state.ts";
@@ -10,6 +9,7 @@ import { extractAssistantReplyText } from "./src/tts/assistant-reply.ts";
 import { createPlaybackQueue } from "./src/tts/playback-queue.ts";
 import { formatTranscriptionStatus } from "./src/ui/transcription-status.ts";
 import { createVoiceCaptureSession } from "./src/voice/voice-capture.ts";
+import { loadTalkPiConfig } from "./src/config.ts";
 
 type ExtensionContext = {
   ui: {
@@ -45,7 +45,8 @@ type ExtensionAPI = {
 
 export default function (pi: ExtensionAPI) {
   let activeCtx: ExtensionContext | undefined;
-  const shortcutConfig = getTalkPiShortcutConfig();
+  const config = loadTalkPiConfig();
+  const shortcutConfig = config.shortcuts;
   const muteState = createMuteState();
 
   const voiceSession = createVoiceCaptureSession(
@@ -53,7 +54,8 @@ export default function (pi: ExtensionAPI) {
       activeCtx?.ui.notify(message, level);
     },
     {
-      pushToTalkKey: shortcutConfig.insertTranscriptKey,
+      pushToTalkKey: shortcutConfig.pushToTalkKey,
+      whisper: config.whisper,
     },
   );
 
@@ -72,6 +74,7 @@ export default function (pi: ExtensionAPI) {
         syncStatus(activeCtx);
       }
     },
+    piper: config.piper,
   });
 
   const getBaseStatusText = (): string => {

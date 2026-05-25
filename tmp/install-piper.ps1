@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-$install = 'C:\tools\piper'
+$install = Join-Path $env:LOCALAPPDATA 'TalkPi\Piper'
 $voiceDir = Join-Path $install 'voices'
 New-Item -ItemType Directory -Force -Path $install | Out-Null
 New-Item -ItemType Directory -Force -Path $voiceDir | Out-Null
