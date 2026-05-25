@@ -21,23 +21,27 @@ export type PlaybackQueueOptions = {
 export type PlaybackQueue = {
   enqueue(text: string): Promise<void>;
   setRecordingBlocked(blocked: boolean): Promise<void>;
+  setMuted(muted: boolean): Promise<void>;
   drain(): Promise<void>;
   pendingCount(): number;
   stop(): Promise<boolean>;
   isPlaying(): boolean;
+  isMuted(): boolean;
 };
 
 export function createPlaybackQueue(options: PlaybackQueueOptions = {}): PlaybackQueue {
   const queue: PlaybackQueueItem[] = [];
   let busy = false;
   let recordingBlocked = false;
+  let muted = false;
+  let muteStopping = false;
   let stopping = false;
   let activePlayback = false;
   let currentAudioPath: string | undefined;
 
   const synthesize = options.synthesize ?? ((text) => synthesizeSpeechToWav(text, options.piper));
   const player = options.player ?? createWavPlayer();
-  const isBlocked = () => options.isRecordingBlocked?.() ?? recordingBlocked;
+  const isBlocked = () => (options.isRecordingBlocked?.() ?? recordingBlocked) || muted;
 
   const notify = (message: string, level: "info" | "warning" | "error") => {
     options.onNotify?.(message, level);
@@ -71,6 +75,16 @@ export function createPlaybackQueue(options: PlaybackQueueOptions = {}): Playbac
             status("stopped", pathBase(audioPath));
             break;
           }
+          if (muteStopping) {
+            muteStopping = false;
+            status("stopped", pathBase(audioPath));
+            break;
+          }
+          if (isBlocked()) {
+            queue.unshift(item);
+            status(muted ? "deferred" : "stopped", pathBase(audioPath));
+            break;
+          }
           status("ready", pathBase(audioPath));
           activePlayback = true;
           status("playing", pathBase(audioPath));
@@ -79,6 +93,16 @@ export function createPlaybackQueue(options: PlaybackQueueOptions = {}): Playbac
           currentAudioPath = undefined;
           if (stopping) {
             status("stopped", pathBase(audioPath));
+            break;
+          }
+          if (muteStopping) {
+            muteStopping = false;
+            status("stopped", pathBase(audioPath));
+            break;
+          }
+          if (isBlocked()) {
+            queue.unshift(item);
+            status(muted ? "deferred" : "stopped", pathBase(audioPath));
             break;
           }
           status("success", pathBase(audioPath));
@@ -126,6 +150,23 @@ export function createPlaybackQueue(options: PlaybackQueueOptions = {}): Playbac
         await process();
       }
     },
+    async setMuted(nextMuted: boolean): Promise<void> {
+      const wasMuted = muted;
+      muted = nextMuted;
+      if (muted && !wasMuted) {
+        if (activePlayback) {
+          muteStopping = true;
+        }
+        if (activePlayback || busy) {
+          await player.stop().catch(() => undefined);
+        }
+        status("stopped", currentAudioPath ? pathBase(currentAudioPath) : undefined);
+        activePlayback = false;
+      }
+      if (!muted) {
+        await process();
+      }
+    },
     async drain(): Promise<void> {
       await process();
     },
@@ -134,6 +175,9 @@ export function createPlaybackQueue(options: PlaybackQueueOptions = {}): Playbac
     },
     isPlaying(): boolean {
       return activePlayback;
+    },
+    isMuted(): boolean {
+      return muted;
     },
     async stop(): Promise<boolean> {
       if (!activePlayback && !busy) {

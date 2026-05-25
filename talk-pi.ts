@@ -4,6 +4,8 @@ import { insertTranscriptIntoEditor } from "./src/input/editor-insert.ts";
 import { getTalkPiShortcutConfig } from "./src/input/shortcut-config.ts";
 import { runVoiceShortcut } from "./src/input/voice-shortcut-interrupt.ts";
 import { createShortcutDebounce } from "./src/input/f5-shortcut.ts";
+import { openMuteMenu } from "./src/ui/mute-menu.ts";
+import { createMuteState } from "./src/ui/mute-state.ts";
 import { extractAssistantReplyText } from "./src/tts/assistant-reply.ts";
 import { createPlaybackQueue } from "./src/tts/playback-queue.ts";
 import { formatTranscriptionStatus } from "./src/ui/transcription-status.ts";
@@ -17,6 +19,19 @@ type ExtensionContext = {
     isIdle?: () => boolean;
     getEditorText?: () => string;
     setEditorText?: (text: string) => void;
+    custom?: <T>(
+      factory: (
+        tui: unknown,
+        theme: unknown,
+        keybindings: unknown,
+        done: (result: T) => void,
+      ) => {
+        render(width: number): string[];
+        handleInput?(data: string): void;
+        invalidate?(): void;
+      },
+      options?: { overlay?: boolean },
+    ) => Promise<T>;
     setEditorComponent?: (
       factory: (tui: unknown, theme: unknown, keybindings: unknown) => unknown,
     ) => void;
@@ -31,6 +46,7 @@ type ExtensionAPI = {
 export default function (pi: ExtensionAPI) {
   let activeCtx: ExtensionContext | undefined;
   const shortcutConfig = getTalkPiShortcutConfig();
+  const muteState = createMuteState();
 
   const voiceSession = createVoiceCaptureSession(
     (message, level) => {
@@ -74,14 +90,30 @@ export default function (pi: ExtensionAPI) {
                 ? "ready"
                 : "idle";
     const voiceStatus = formatTranscriptionStatus(normalizedStatus, message);
-    const base = `${voiceStatus.toLowerCase().replace(/\s+/g, "-")}`;
+    const muteSuffix = muteState.isMuted() ? ":muted" : "";
+    const base = `${voiceStatus.toLowerCase().replace(/\s+/g, "-")}${muteSuffix}`;
     const full = speechStatus ? `${base}:${speechStatus.toLowerCase().replace(/\s+/g, "-")}` : base;
     void playbackQueue.setRecordingBlocked(status !== "idle");
+    if (playbackQueue.isMuted() !== muteState.isMuted()) {
+      void playbackQueue.setMuted(muteState.isMuted());
+    }
     ctx.ui.setStatus("talk-pi", full);
+  };
+
+  const setMuteState = async (muted: boolean, ctx: ExtensionContext): Promise<void> => {
+    if (muted) {
+      muteState.mute();
+    } else {
+      muteState.unmute();
+    }
+    await playbackQueue.setMuted(muted);
+    ctx.ui.notify(muted ? "Extension muted" : "Extension unmuted", "info");
+    syncStatus(ctx);
   };
 
   pi.on("session_start", async (_event, ctx) => {
     activeCtx = ctx;
+    await playbackQueue.setMuted(muteState.isMuted());
     syncStatus(ctx);
 
     ctx.ui.setEditorComponent?.((tui, theme, keybindings) => {
@@ -97,12 +129,15 @@ export default function (pi: ExtensionAPI) {
           if (!this.recording) {
             this.recording = true;
             this.recordingShortcut = shortcut;
-            void voiceSession.start().then(() => syncStatus(activeCtx ?? ctx)).catch((error) => {
-              this.recording = false;
-              this.recordingShortcut = undefined;
-              activeCtx?.ui.notify(error instanceof Error ? error.message : "Start failed", "error");
-              syncStatus(activeCtx ?? ctx);
-            });
+            void voiceSession
+              .start()
+              .then(() => syncStatus(activeCtx ?? ctx))
+              .catch((error) => {
+                this.recording = false;
+                this.recordingShortcut = undefined;
+                activeCtx?.ui.notify(error instanceof Error ? error.message : "Start failed", "error");
+                syncStatus(activeCtx ?? ctx);
+              });
             return;
           }
 
@@ -111,25 +146,27 @@ export default function (pi: ExtensionAPI) {
           this.recordingShortcut = undefined;
           const stopPromise = voiceSession.stop();
           syncStatus(activeCtx ?? ctx);
-          void stopPromise.then((text) => {
-            const transcript = String(text ?? "").trim();
-            if (transcript) {
-              if (currentShortcut === "send") {
-                const deliverAs = activeCtx?.isIdle?.() === false ? { deliverAs: "followUp" as const } : undefined;
-                pi.sendUserMessage(transcript, deliverAs);
-                activeCtx?.ui.notify(`Transcript sent`, "info");
-              } else if (!insertTranscriptIntoEditor(activeCtx ?? ctx, transcript)) {
-                activeCtx?.ui.pasteToEditor(transcript);
-                activeCtx?.ui.notify(`Transcript inserted`, "info");
-              } else {
-                activeCtx?.ui.notify(`Transcript inserted`, "info");
+          void stopPromise
+            .then((text) => {
+              const transcript = String(text ?? "").trim();
+              if (transcript) {
+                if (currentShortcut === "send") {
+                  const deliverAs = activeCtx?.isIdle?.() === false ? { deliverAs: "followUp" as const } : undefined;
+                  pi.sendUserMessage(transcript, deliverAs);
+                  activeCtx?.ui.notify(`Transcript sent`, "info");
+                } else if (!insertTranscriptIntoEditor(activeCtx ?? ctx, transcript)) {
+                  activeCtx?.ui.pasteToEditor(transcript);
+                  activeCtx?.ui.notify(`Transcript inserted`, "info");
+                } else {
+                  activeCtx?.ui.notify(`Transcript inserted`, "info");
+                }
               }
-            }
-            syncStatus(activeCtx ?? ctx);
-          }).catch((error) => {
-            activeCtx?.ui.notify(error instanceof Error ? error.message : "Stop failed", "error");
-            syncStatus(activeCtx ?? ctx);
-          });
+              syncStatus(activeCtx ?? ctx);
+            })
+            .catch((error) => {
+              activeCtx?.ui.notify(error instanceof Error ? error.message : "Stop failed", "error");
+              syncStatus(activeCtx ?? ctx);
+            });
         }
 
         handleInput(data: string): void {
@@ -185,6 +222,22 @@ export default function (pi: ExtensionAPI) {
         `Push-to-talk ready: ${shortcutConfig.sendTranscriptKey.toUpperCase()} sends directly; ${shortcutConfig.insertTranscriptKey.toUpperCase()} inserts into the editor`,
         "info",
       );
+    },
+  });
+
+  pi.registerCommand?.("talk-pi-menu", {
+    description: "Open the mute menu",
+    handler: async (_args, ctx) => {
+      activeCtx = ctx;
+      syncStatus(ctx);
+      const choice = await openMuteMenu(ctx, muteState);
+      if (choice === "mute") {
+        await setMuteState(true, ctx);
+      } else if (choice === "unmute") {
+        await setMuteState(false, ctx);
+      } else {
+        syncStatus(ctx);
+      }
     },
   });
 }
