@@ -6,6 +6,21 @@ function matchesKey(data: string, key: string): boolean {
 }
 
 const DEFAULT_PUSH_TO_TALK_KEY = "f10";
+const STOP_CAPTURE_TIMEOUT_MS = 3000;
+const TRANSCRIBE_TIMEOUT_MS = 60000;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 export type VoiceCaptureOptions = {
   pushToTalkKey?: string;
@@ -68,9 +83,9 @@ export function createVoiceCaptureSession(
     capture = undefined;
     active = false;
     try {
-      await currentCapture.stop();
+      await withTimeout(Promise.resolve(currentCapture.stop()), STOP_CAPTURE_TIMEOUT_MS, "Recording stop");
 
-      const result = await transcribe(filePath);
+      const result = await withTimeout(transcribe(filePath), TRANSCRIBE_TIMEOUT_MS, "Transcription");
       const text = String(result?.text ?? "").trim();
       if (!text) {
         set("idle", "No speech detected");

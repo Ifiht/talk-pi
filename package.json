@@ -1,7 +1,7 @@
 {
   "name": "talk-pi",
-  "version": "1.0.2",
-  "description": "Pi extension for local voice input, Whisper transcription, and Piper TTS playback",
+  "version": "1.0.3",
+  "description": "Pi extension for push-to-talk voice capture, Whisper transcription, and Piper TTS playback",
   "license": "MIT",
   "type": "module",
   "main": "./talk-pi.ts",
@@ -11,7 +11,6 @@
   "files": [
     "talk-pi.ts",
     "src/",
-    "scripts/",
     "README.md",
     "package.json",
     ".env.example"
@@ -21,6 +20,9 @@
     "pi",
     "talk-pi",
     "voice",
+    "push-to-talk",
+    "speech-to-text",
+    "text-to-speech",
     "whisper",
     "piper",
     "extension"
@@ -44,11 +46,8 @@
   "engines": {
     "node": ">=24"
   },
-  "scripts": {
-    "postinstall": "node ./scripts/patch-node-record-lpcm16-ts.mjs"
-  },
+  "scripts": {},
   "dependencies": {
-    "node-record-lpcm16-ts": "^1.0.0",
     "play-sound": "^1.1.6",
     "whisper-cpp-node": "^0.2.12"
   },

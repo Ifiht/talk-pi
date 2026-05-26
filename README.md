@@ -1,8 +1,14 @@
 # talk-pi
 
-`talk-pi` is a Pi extension package for local voice capture, Whisper transcription, and Piper TTS playback.
+Pi extension for local voice capture, Whisper transcription, and Piper TTS playback.
 
 ## Install
+
+```bash
+pi install npm:talk-pi
+```
+
+Or install from npm:
 
 ```bash
 npm install talk-pi
@@ -10,19 +16,33 @@ npm install talk-pi
 
 ## Publish
 
-MIT licensed. See `LICENSE`.
-
 ```bash
 npm publish --access public
 ```
 
-## Quick setup
+## What it does
 
-1. Copy `.env.example` to `.env` and adjust the paths.
-2. Install Piper: <https://github.com/rhasspy/piper/releases>.
-3. Download a voice model: <https://huggingface.co/rhasspy/piper-voices>.
-4. Set `TALK_PI_PIPER_BIN` and `TALK_PI_PIPER_MODEL_PATH`.
-5. Set `TALK_PI_WHISPER_MODEL_PATH`, or let Whisper download a model on first run.
+- `/talk-pi` opens the unified voice menu
+- push-to-talk records audio and transcribes it with Whisper
+- replies are spoken with Piper
+- voice model and English output can be selected from the menu
+
+## Requirements
+
+- Node.js 24+
+- Piper binary on `PATH` or configured via `TALK_PI_PIPER_BIN`
+- A Piper voice model configured via `TALK_PI_PIPER_MODEL_PATH`
+- A Whisper model configured via `TALK_PI_WHISPER_MODEL_PATH` or downloaded on first run
+- A system recorder: `sox` on Windows; `sox`, `rec`, or `arecord` on Linux/macOS
+
+Talk-Pi records audio directly with the system recorder. It does not depend on `node-record-lpcm16-ts`.
+
+## Setup
+
+1. Copy `.env.example` to `.env`.
+2. Set `TALK_PI_PIPER_BIN` and `TALK_PI_PIPER_MODEL_PATH`.
+3. Set `TALK_PI_WHISPER_MODEL_PATH`, or let Whisper download a model on first run.
+4. Install a supported recorder and ensure it is on `PATH`.
 
 ## Configuration
 
@@ -37,8 +57,6 @@ Environment variables:
 - `TALK_PI_WHISPER_MODEL_PATH`
 - `TALK_PI_WHISPER_MODEL_URL`
 
-See `.env.example` for a sample.
-
 ## Defaults
 
 | Variable | Default |
@@ -52,35 +70,19 @@ See `.env.example` for a sample.
 | `TALK_PI_WHISPER_MODEL_PATH` | `~/.pi/models/ggml-base.bin` |
 | `TALK_PI_WHISPER_MODEL_URL` | `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin` |
 
-## Setup by platform
+## Platform notes
 
 ### Windows
 
-1. Download Piper: <https://github.com/rhasspy/piper/releases>.
-2. Extract it to a folder like `C:\Users\<you>\AppData\Local\TalkPi\Piper`.
-3. Download a voice model from <https://huggingface.co/rhasspy/piper-voices>.
-4. Save the `.onnx` and `.onnx.json` files in a `voices\` folder, or anywhere you prefer.
-5. Set `TALK_PI_PIPER_BIN` to `...\piper\piper.exe`.
-6. Set `TALK_PI_PIPER_MODEL_PATH` to the `.onnx` file.
-7. Set `TALK_PI_WHISPER_MODEL_PATH` to your local Whisper model.
-
-Example:
-
-```env
-TALK_PI_PIPER_BIN=C:\Users\<you>\AppData\Local\TalkPi\Piper\piper\piper.exe
-TALK_PI_PIPER_MODEL_PATH=C:\Users\<you>\AppData\Local\TalkPi\Piper\voices\pt_BR-faber-medium.onnx
-TALK_PI_WHISPER_MODEL_PATH=C:\Users\<you>\.pi\models\ggml-base.bin
-```
+- Install Piper and a SoX build with `sox.exe` on `PATH`.
+- Set `TALK_PI_PIPER_BIN` and `TALK_PI_PIPER_MODEL_PATH`.
+- Set `TALK_PI_WHISPER_MODEL_PATH`.
 
 ### Linux/macOS
 
-1. Install or build Piper so `piper` is available on `PATH`.
-2. Download a voice model from <https://huggingface.co/rhasspy/piper-voices>.
-3. Save the `.onnx` and `.onnx.json` files anywhere you prefer, for example `~/.pi/tts/piper/`.
-4. Set `TALK_PI_PIPER_BIN=piper`.
-5. Set `TALK_PI_PIPER_MODEL_PATH` to the `.onnx` file.
-6. Set `TALK_PI_WHISPER_MODEL_PATH` to your local Whisper model.
-7. On first run, Whisper can download the model automatically if the file is missing.
+- Install Piper so `piper` is available on `PATH`.
+- Install `sox`, `rec`, or `arecord`.
+- Set `TALK_PI_PIPER_BIN`, `TALK_PI_PIPER_MODEL_PATH`, and `TALK_PI_WHISPER_MODEL_PATH`.
 
 ## Notes
 
