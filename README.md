@@ -1,6 +1,20 @@
 # talk-pi
 
-Talk-pi is a Pi coding-agent extension for voice capture, Whisper transcription, and Piper TTS playback.
+`talk-pi` is a Pi extension package for local voice capture, Whisper transcription, and Piper TTS playback.
+
+## Install
+
+```bash
+npm install talk-pi
+```
+
+## Publish
+
+MIT licensed. See `LICENSE`.
+
+```bash
+npm publish --access public
+```
 
 ## Quick setup
 
