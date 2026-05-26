@@ -7,15 +7,13 @@ async function run() {
   const notifications: string[] = [];
   let muted = false;
 
+  const choices = ["Status", "Mute", "Close"];
   const ctx = {
     ui: {
       async select(title: string, options: string[]) {
         titles.push(title);
         optionSets.push(options);
-        if (options[0] === "Status") {
-          return "Status";
-        }
-        return muted ? "Unmute" : "Mute";
+        return choices.shift();
       },
       notify(message: string) {
         notifications.push(message);
@@ -32,7 +30,7 @@ async function run() {
   });
 
   assert.ok(titles[0]?.includes("Unmuted"));
-  assert.deepEqual(optionSets[0], ["Status", "Mute", "Close"]);
+  assert.deepEqual(optionSets[0], ["Status", "Voice Language", "Mute", "Close"]);
   assert.ok(notifications.includes("Status: Ready"));
   assert.ok(notifications.includes("Extension muted"));
   assert.equal(muted, true);

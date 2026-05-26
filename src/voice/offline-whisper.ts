@@ -5,7 +5,20 @@ import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
 
-const { createWhisperContext, transcribeAsync } = createRequire(import.meta.url)("whisper-cpp-node") as typeof import("whisper-cpp-node");
+type WhisperModule = typeof import("whisper-cpp-node");
+
+let whisperModule: WhisperModule | undefined;
+
+function loadWhisperModule(): WhisperModule {
+  if (!whisperModule) {
+    try {
+      whisperModule = createRequire(import.meta.url)("whisper-cpp-node") as WhisperModule;
+    } catch {
+      throw new Error("whisper-cpp-node not installed. Install dependencies to use voice transcription.");
+    }
+  }
+  return whisperModule;
+}
 
 const DEFAULT_MODEL_URL =
   "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin";
@@ -19,6 +32,7 @@ export type WhisperResult = {
 export type WhisperConfig = {
   modelPath?: string;
   modelUrl?: string;
+  language?: string;
   env?: NodeJS.ProcessEnv;
 };
 
@@ -78,11 +92,13 @@ export async function ensureWhisperModel(options: WhisperConfig = {}): Promise<s
   return modelPath;
 }
 
-let cachedContext: ReturnType<typeof createWhisperContext> | undefined;
+let cachedContext: ReturnType<WhisperModule["createWhisperContext"]> | undefined;
 let cachedModelPath: string | undefined;
 
 export async function transcribeAudioFile(filePath: string, options: WhisperConfig = {}): Promise<WhisperResult> {
   const modelPath = await ensureWhisperModel(options);
+  const { createWhisperContext, transcribeAsync } = loadWhisperModule();
+
   if (!cachedContext || cachedModelPath !== modelPath) {
     cachedContext?.free?.();
     cachedContext = createWhisperContext({ model: modelPath, use_gpu: false, no_prints: true });
@@ -91,7 +107,7 @@ export async function transcribeAudioFile(filePath: string, options: WhisperConf
 
   const result = await transcribeAsync(cachedContext, {
     fname_inp: filePath,
-    language: "pt",
+    language: options.language?.trim().toLowerCase() || "pt",
     no_timestamps: false,
   });
 

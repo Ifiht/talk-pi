@@ -1,3 +1,4 @@
+import path from "node:path";
 import { CustomEditor } from "@mariozechner/pi-coding-agent";
 import { isKeyRelease, matchesKey } from "@mariozechner/pi-tui";
 import { insertTranscriptIntoEditor } from "./src/input/editor-insert.ts";
@@ -8,6 +9,8 @@ import { openUnifiedTalkMenu } from "./src/ui/unified-talk-menu.ts";
 import { formatFooterStatusFromState } from "./src/ui/footer-status.ts";
 import { extractAssistantReplyText } from "./src/tts/assistant-reply.ts";
 import { createPlaybackQueue } from "./src/tts/playback-queue.ts";
+import { resolvePiperRuntimeConfig, resolvePiperVoiceSelection, setPiperOutputKind, setPiperVoiceModel, type PiperPreferenceResolution } from "./src/tts/piper-preferences.ts";
+import { transcribeAudioFile } from "./src/voice/offline-whisper.ts";
 import { createVoiceCaptureSession } from "./src/voice/voice-capture.ts";
 import { loadTalkPiConfig } from "./src/config.ts";
 
@@ -15,6 +18,7 @@ type ExtensionContext = {
   ui: {
     setStatus(id: string, value: string): void;
     notify(message: string, level: "info" | "warning" | "error"): void;
+    select(title: string, options: string[], opts?: { overlay?: boolean }): Promise<string | undefined>;
     pasteToEditor(text: string): void;
     isIdle?: () => boolean;
     getEditorText?: () => string;
@@ -48,6 +52,7 @@ export default function (pi: ExtensionAPI) {
   const config = loadTalkPiConfig();
   const shortcutConfig = config.shortcuts;
   const muteState = createMuteState();
+  let piperSelection: PiperPreferenceResolution | undefined;
 
   const voiceSession = createVoiceCaptureSession(
     (message, level) => {
@@ -55,7 +60,10 @@ export default function (pi: ExtensionAPI) {
     },
     {
       pushToTalkKey: shortcutConfig.pushToTalkKey,
-      whisper: config.whisper,
+      transcribe: (filePath: string) => transcribeAudioFile(filePath, {
+        ...config.whisper,
+        language: piperSelection?.whisperLanguage ?? "pt",
+      }),
     },
   );
 
@@ -74,7 +82,10 @@ export default function (pi: ExtensionAPI) {
         syncStatus(activeCtx);
       }
     },
-    piper: config.piper,
+    piper: async () => resolvePiperRuntimeConfig({
+      ...config.piper,
+      modelPath: piperSelection?.modelPath ?? config.piper.modelPath,
+    }),
   });
 
   const getFooterStatusText = (): string => formatFooterStatusFromState({
@@ -87,7 +98,9 @@ export default function (pi: ExtensionAPI) {
 
   const getMenuStatusText = (): string => {
     const base = getFooterStatusText();
-    return `${base} | ${shortcutConfig.sendTranscriptKey.toUpperCase()} sends directly | ${shortcutConfig.insertTranscriptKey.toUpperCase()} inserts into editor`;
+    const modelLabel = piperSelection?.activeModel?.label ?? path.basename(config.piper.modelPath);
+    const outputLabel = piperSelection?.outputLabel ?? "Portuguese";
+    return `${base} | Voice Language: ${outputLabel} | Piper: ${modelLabel} | ${shortcutConfig.sendTranscriptKey.toUpperCase()} sends directly | ${shortcutConfig.insertTranscriptKey.toUpperCase()} inserts into editor`;
   };
 
   const syncStatus = (ctx: ExtensionContext) => {
@@ -111,6 +124,7 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_start", async (_event, ctx) => {
     activeCtx = ctx;
+    piperSelection = await resolvePiperVoiceSelection();
     await playbackQueue.setMuted(muteState.isMuted());
     syncStatus(ctx);
 
@@ -222,6 +236,32 @@ export default function (pi: ExtensionAPI) {
           await setMuteState(nextMuted, ctx);
         },
         getStatusText: () => getMenuStatusText(),
+        chooseVoiceLanguage: async () => {
+          const selection = piperSelection ?? await resolvePiperVoiceSelection();
+          if (!selection.models.length) {
+            ctx.ui.notify("No Piper models found", "warning");
+            return;
+          }
+
+          const englishModel = selection.models.find((model) => model.language === "english");
+          const portugueseModel = selection.models.find((model) => model.language !== "english") ?? selection.activeModel ?? selection.models[0];
+          const choices = [
+            { label: `Portuguese${selection.outputLabel === "Portuguese" ? " (active)" : ""}`, kind: "default" as const, model: portugueseModel },
+            { label: `English${selection.outputLabel === "English" ? " (active)" : ""}`, kind: "english" as const, model: englishModel },
+          ].filter((choice) => Boolean(choice.model));
+
+          const labels = choices.map((choice) => choice.label);
+          const choice = await ctx.ui.select("Choose Voice Language", labels, { overlay: true });
+          const index = labels.indexOf(String(choice ?? ""));
+          const selected = index >= 0 ? choices[index] : undefined;
+          if (!selected || !selected.model) return;
+
+          await setPiperVoiceModel(selected.model.id);
+          await setPiperOutputKind(selected.kind);
+          piperSelection = await resolvePiperVoiceSelection();
+          ctx.ui.notify(`Voice language set to ${selected.kind === "english" ? "English" : "Portuguese"}`, "info");
+          syncStatus(ctx);
+        },
       });
       syncStatus(ctx);
     },

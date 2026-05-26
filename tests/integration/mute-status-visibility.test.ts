@@ -5,11 +5,12 @@ async function run() {
   const titles: string[] = [];
   let muted = true;
 
+  const choices = ["Unmute", "Close", "Mute", "Close"];
   const ctx = {
     ui: {
       async select(title: string, options: string[]) {
         titles.push(title);
-        return options[2];
+        return choices.shift();
       },
       notify: (_message: string, _level: "info" | "warning" | "error") => undefined,
     },

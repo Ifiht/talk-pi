@@ -1,6 +1,9 @@
-import { matchesKey } from "@earendil-works/pi-tui";
-import { cleanupCapture, startMicCapture, type MicCapture } from "./offline-recorder";
-import { transcribeAudioFile, type WhisperConfig, type WhisperResult } from "./offline-whisper";
+import { cleanupCapture, startMicCapture, type MicCapture } from "./offline-recorder.ts";
+import { transcribeAudioFile, type WhisperConfig, type WhisperResult } from "./offline-whisper.ts";
+
+function matchesKey(data: string, key: string): boolean {
+  return String(data).trim().toLowerCase() === String(key).trim().toLowerCase();
+}
 
 const DEFAULT_PUSH_TO_TALK_KEY = "f10";
 

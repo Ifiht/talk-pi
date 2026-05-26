@@ -39,7 +39,8 @@ async function run() {
   await queue.stop();
   await active;
 
-  assert.deepEqual(events.some((event) => event.includes("stopped")), true);
+  assert.equal(events.includes("stop"), true);
+  assert.deepEqual(events.some((event) => event.startsWith("Ready")), true);
   assert.equal(events.includes("play:assistant reply"), true);
   assert.equal(queue.pendingCount(), 0);
 }

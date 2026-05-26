@@ -1,5 +1,5 @@
-import { createIdleRecordingState, describeRecordingState, isRecording, type RecordingState } from "../state/recording_state";
-import type { VoiceBridge } from "./microphone_capture";
+import { createIdleRecordingState, describeRecordingState, isRecording, type RecordingState } from "../state/recording_state.ts";
+import type { VoiceBridge } from "./microphone_capture.ts";
 
 export type RecordingControllerOptions = {
   onStateChange?: (state: RecordingState) => void;
@@ -8,11 +8,13 @@ export type RecordingControllerOptions = {
 
 export class RecordingController {
   private state = createIdleRecordingState();
+  private readonly bridge: VoiceBridge;
+  private readonly options: RecordingControllerOptions;
 
-  constructor(
-    private readonly bridge: VoiceBridge,
-    private readonly options: RecordingControllerOptions = {},
-  ) {}
+  constructor(bridge: VoiceBridge, options: RecordingControllerOptions = {}) {
+    this.bridge = bridge;
+    this.options = options;
+  }
 
   getState(): RecordingState {
     return this.state;

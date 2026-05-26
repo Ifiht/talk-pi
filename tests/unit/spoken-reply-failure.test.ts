@@ -30,7 +30,7 @@ async function run() {
   await queue.enqueue("good");
 
   assert.deepEqual(played, ["good"]);
-  assert.ok(statuses.some((value) => value.includes("failed")));
+  assert.ok(statuses.some((value) => value.includes("Error")));
 }
 
 run().catch((error) => {

@@ -1,12 +1,27 @@
 import assert from "node:assert/strict";
-import { resolve } from "node:path";
-import { startMicCapture } from "../../src/voice/offline-recorder";
+import { Readable } from "node:stream";
+import { startMicCapture } from "../../src/voice/offline-recorder.ts";
 
-// Smoke test only: if recorder backend missing, startMicCapture should throw a clear error.
-try {
-  const capture = startMicCapture();
+async function run() {
+  const capture = startMicCapture({
+    resolveRecorderProgram: () => "mock-recorder",
+    loadRecorder: () => ({
+      record: () => {
+        const stream = Readable.from([] as Buffer[]);
+        return {
+          stream: () => stream,
+          stop: () => undefined,
+        };
+      },
+    }),
+  });
+
   assert.equal(typeof capture.filePath, "string");
-  void capture.stop();
-} catch (error) {
-  assert.ok(error instanceof Error);
+  assert.ok(capture.filePath.includes("talk-pi-voice-"));
+  await capture.stop();
 }
+
+run().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

@@ -16,7 +16,7 @@ export type PlaybackQueueOptions = {
   isRecordingBlocked?: () => boolean;
   onNotify?: (message: string, level: "info" | "warning" | "error") => void;
   onStatus?: (message: string) => void;
-  piper?: PiperClientOptions;
+  piper?: PiperClientOptions | (() => PiperClientOptions | Promise<PiperClientOptions>);
 };
 
 export type PlaybackQueue = {
@@ -40,7 +40,13 @@ export function createPlaybackQueue(options: PlaybackQueueOptions = {}): Playbac
   let activePlayback = false;
   let currentAudioPath: string | undefined;
 
-  const synthesize = options.synthesize ?? ((text) => synthesizeSpeechToWav(text, options.piper));
+  const resolvePiper = async (): Promise<PiperClientOptions | undefined> => {
+    if (typeof options.piper === "function") {
+      return await options.piper();
+    }
+    return options.piper;
+  };
+  const synthesize = options.synthesize ?? ((text) => resolvePiper().then((piper) => synthesizeSpeechToWav(text, piper)));
   const player = options.player ?? createWavPlayer();
   const isBlocked = () => (options.isRecordingBlocked?.() ?? recordingBlocked) || muted;
 

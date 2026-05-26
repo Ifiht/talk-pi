@@ -37,6 +37,9 @@
   "engines": {
     "node": ">=24"
   },
+  "scripts": {
+    "postinstall": "node ./scripts/patch-node-record-lpcm16-ts.mjs"
+  },
   "dependencies": {
     "node-record-lpcm16-ts": "^1.0.0",
     "play-sound": "^1.1.6",

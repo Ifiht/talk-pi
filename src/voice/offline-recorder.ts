@@ -5,7 +5,26 @@ import path from "node:path";
 import { once } from "node:events";
 import { setTimeout as delay } from "node:timers/promises";
 import { spawnSync } from "node:child_process";
-import { record } from "node-record-lpcm16-ts";
+import { createRequire } from "node:module";
+
+let recorderModule: { record?: (...args: any[]) => any } | undefined;
+
+function loadRecorder(): { record: (...args: any[]) => any } {
+  if (!recorderModule) {
+    try {
+      recorderModule = createRequire(import.meta.url)("node-record-lpcm16-ts") as { record?: (...args: any[]) => any };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`node-record-lpcm16-ts not installed or broken: ${message}`);
+    }
+  }
+
+  if (typeof recorderModule.record !== "function") {
+    throw new Error("node-record-lpcm16-ts recorder unavailable.");
+  }
+
+  return recorderModule as { record: (...args: any[]) => any };
+}
 
 export type MicCapture = {
   filePath: string;
@@ -40,11 +59,17 @@ function captureDir(): string {
   return path.join(os.homedir(), ".pi", "voice-recordings");
 }
 
-export function startMicCapture(): MicCapture {
+type MicCaptureDeps = {
+  resolveRecorderProgram?: () => string;
+  loadRecorder?: () => { record: (...args: any[]) => any };
+};
+
+export function startMicCapture(deps: MicCaptureDeps = {}): MicCapture {
   const filePath = path.join(captureDir(), `talk-pi-voice-${Date.now()}.wav`);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   const file = fs.createWriteStream(filePath, { encoding: "binary" });
-  const recorder = resolveRecorderProgram();
+  const recorder = (deps.resolveRecorderProgram ?? resolveRecorderProgram)();
+  const { record } = (deps.loadRecorder ?? loadRecorder)();
   const recording = record({
     sampleRate: 16000,
     channels: 1,

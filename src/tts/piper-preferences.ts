@@ -1,0 +1,228 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+export type PiperModel = {
+  id: string;
+  label: string;
+  language: "english" | "other";
+  path: string;
+  available: boolean;
+};
+
+export type PiperOutputKind = "default" | "english";
+
+export type PiperVoicePreference = {
+  selectedModelId?: string;
+  selectedOutputKind: PiperOutputKind;
+  updatedAt: string;
+};
+
+export type PiperPreferenceOptions = {
+  env?: NodeJS.ProcessEnv;
+  modelPath?: string;
+};
+
+export type PiperPreferenceResolution = {
+  models: PiperModel[];
+  preference: PiperVoicePreference;
+  activeModel?: PiperModel;
+  activeOutputKind: PiperOutputKind;
+  whisperLanguage: "pt" | "en";
+  modelPath: string;
+  outputLabel: string;
+};
+
+export type PiperRuntimeConfig = {
+  binaryPath: string;
+  modelPath: string;
+  outputDir: string;
+  env: NodeJS.ProcessEnv;
+};
+
+const DEFAULT_PREFERENCE: PiperVoicePreference = {
+  selectedOutputKind: "default",
+  updatedAt: new Date(0).toISOString(),
+};
+
+function homePiperDir(env: NodeJS.ProcessEnv): string {
+  return env.TALK_PI_PIPER_MODELS_DIR?.trim() || path.join(os.homedir(), ".pi", "tts", "piper");
+}
+
+function preferenceFilePath(env: NodeJS.ProcessEnv): string {
+  return env.TALK_PI_PIPER_PREFERENCES_PATH?.trim() || path.join(os.homedir(), ".pi", "tts", "piper-preferences.json");
+}
+
+function normalizeModelId(modelPath: string): string {
+  return modelPath.replace(/\\/g, "/").replace(/\.onnx$/i, "");
+}
+
+function modelLabel(modelPath: string): string {
+  return path.basename(modelPath).replace(/\.onnx$/i, "");
+}
+
+function detectLanguage(modelPath: string): "english" | "other" {
+  const label = modelLabel(modelPath).toLowerCase();
+  return /^en([_-]|$)/.test(label) || label.includes("english") ? "english" : "other";
+}
+
+async function pathExists(candidate: string): Promise<boolean> {
+  try {
+    await fs.access(candidate);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function walkOnnxFiles(root: string): Promise<string[]> {
+  const entries = await fs.readdir(root, { withFileTypes: true }).catch(() => [] as import("node:fs").Dirent[]);
+  const discovered: string[] = [];
+  for (const entry of entries) {
+    const candidate = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      discovered.push(...await walkOnnxFiles(candidate));
+      continue;
+    }
+    if (entry.isFile() && candidate.toLowerCase().endsWith(".onnx")) {
+      discovered.push(candidate);
+    }
+  }
+  return discovered;
+}
+
+export async function discoverPiperModels(options: PiperPreferenceOptions = {}): Promise<PiperModel[]> {
+  const env = options.env ?? process.env;
+  const roots = new Set<string>([homePiperDir(env)]);
+  const currentModelPath = options.modelPath?.trim() || env.TALK_PI_PIPER_MODEL_PATH?.trim();
+  if (currentModelPath) roots.add(path.dirname(currentModelPath));
+  const extraRoots = env.TALK_PI_PIPER_MODELS_DIRS?.split(path.delimiter).map((value) => value.trim()).filter(Boolean) ?? [];
+  for (const root of extraRoots) roots.add(root);
+
+  const files = new Set<string>();
+  for (const root of roots) {
+    if (await pathExists(root)) {
+      for (const file of await walkOnnxFiles(root)) {
+        files.add(file);
+      }
+    }
+  }
+
+  if (currentModelPath && (await pathExists(currentModelPath))) {
+    files.add(currentModelPath);
+  }
+
+  return [...files].sort((a, b) => a.localeCompare(b)).map((modelPath) => ({
+    id: normalizeModelId(modelPath),
+    label: modelLabel(modelPath),
+    language: detectLanguage(modelPath),
+    path: modelPath,
+    available: true,
+  }));
+}
+
+export async function loadPiperVoicePreference(options: PiperPreferenceOptions = {}): Promise<PiperVoicePreference> {
+  const env = options.env ?? process.env;
+  const filePath = preferenceFilePath(env);
+  try {
+    const raw = await fs.readFile(filePath, "utf8");
+    const parsed = JSON.parse(raw) as Partial<PiperVoicePreference>;
+    return {
+      selectedModelId: typeof parsed.selectedModelId === "string" ? parsed.selectedModelId : undefined,
+      selectedOutputKind: parsed.selectedOutputKind === "english" ? "english" : "default",
+      updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : new Date(0).toISOString(),
+    };
+  } catch {
+    return { ...DEFAULT_PREFERENCE };
+  }
+}
+
+export async function savePiperVoicePreference(preference: Partial<PiperVoicePreference>, options: PiperPreferenceOptions = {}): Promise<PiperVoicePreference> {
+  const env = options.env ?? process.env;
+  const filePath = preferenceFilePath(env);
+  const next: PiperVoicePreference = {
+    selectedModelId: typeof preference.selectedModelId === "string" ? preference.selectedModelId : undefined,
+    selectedOutputKind: preference.selectedOutputKind === "english" ? "english" : "default",
+    updatedAt: new Date().toISOString(),
+  };
+
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+  return next;
+}
+
+function englishModel(models: PiperModel[]): PiperModel | undefined {
+  return models.find((model) => model.language === "english");
+}
+
+function selectedModel(models: PiperModel[], preference: PiperVoicePreference, currentModelPath?: string): PiperModel | undefined {
+  if (preference.selectedModelId) {
+    const match = models.find((model) => model.id === preference.selectedModelId);
+    if (match) return match;
+  }
+  if (currentModelPath) {
+    const normalizedCurrent = normalizeModelId(currentModelPath);
+    const current = models.find((model) => model.id === normalizedCurrent || model.path === currentModelPath);
+    if (current) return current;
+  }
+  return models[0];
+}
+
+export async function resolvePiperVoiceSelection(options: PiperPreferenceOptions = {}): Promise<PiperPreferenceResolution> {
+  const env = options.env ?? process.env;
+  const models = await discoverPiperModels(options);
+  const preference = await loadPiperVoicePreference(options);
+  const currentModelPath = options.modelPath?.trim() || env.TALK_PI_PIPER_MODEL_PATH?.trim();
+  const baseModel = selectedModel(models, preference, currentModelPath);
+  const english = englishModel(models);
+  const activeOutputKind = preference.selectedOutputKind === "english" ? "english" : "default";
+  const activeModel = activeOutputKind === "english" ? (english ?? baseModel) : baseModel;
+  const whisperLanguage = activeModel?.language === "english" ? "en" : "pt";
+  const outputLabel = activeOutputKind === "english" ? "English" : "Portuguese";
+
+  if (activeOutputKind === "english" && !english) {
+    return {
+      models,
+      preference,
+      activeModel: baseModel,
+      activeOutputKind,
+      modelPath: baseModel?.path ?? currentModelPath ?? path.join(os.homedir(), ".pi", "tts", "piper", "pt_BR-faber-medium.onnx"),
+      whisperLanguage,
+      outputLabel,
+    };
+  }
+
+  return {
+    models,
+    preference,
+    activeModel,
+    activeOutputKind,
+    modelPath: activeModel?.path ?? currentModelPath ?? path.join(os.homedir(), ".pi", "tts", "piper", "pt_BR-faber-medium.onnx"),
+    whisperLanguage,
+    outputLabel,
+  };
+}
+
+export async function setPiperVoiceModel(modelId: string, options: PiperPreferenceOptions = {}): Promise<PiperVoicePreference> {
+  const current = await loadPiperVoicePreference(options);
+  return savePiperVoicePreference({ ...current, selectedModelId: modelId }, options);
+}
+
+export async function setPiperOutputKind(kind: PiperOutputKind, options: PiperPreferenceOptions = {}): Promise<PiperVoicePreference> {
+  const current = await loadPiperVoicePreference(options);
+  return savePiperVoicePreference({ ...current, selectedOutputKind: kind }, options);
+}
+
+export async function resolvePiperRuntimeConfig(
+  base: { binaryPath: string; modelPath: string; outputDir: string; env?: NodeJS.ProcessEnv },
+  options: PiperPreferenceOptions = {},
+): Promise<PiperRuntimeConfig> {
+  const env = options.env ?? process.env;
+  const selection = await resolvePiperVoiceSelection({ env, modelPath: base.modelPath });
+  return {
+    binaryPath: base.binaryPath,
+    modelPath: selection.modelPath,
+    outputDir: base.outputDir,
+    env: base.env ?? env,
+  };
+}

@@ -11,6 +11,7 @@ export type UnifiedTalkMenuState = {
   isMuted(): boolean;
   setMuted(nextMuted: boolean): Promise<void> | void;
   getStatusText(): string;
+  chooseVoiceLanguage(): Promise<void> | void;
 };
 
 export async function openUnifiedTalkMenu(ctx: UnifiedTalkMenuContext, state: UnifiedTalkMenuState): Promise<void> {
@@ -27,6 +28,11 @@ export async function openUnifiedTalkMenu(ctx: UnifiedTalkMenuContext, state: Un
 
     if (action === "status") {
       ctx.ui.notify(`Status: ${state.getStatusText()}`, "info");
+      continue;
+    }
+
+    if (action === "voice-language") {
+      await state.chooseVoiceLanguage();
       continue;
     }
 

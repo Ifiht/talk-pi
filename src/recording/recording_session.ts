@@ -1,4 +1,4 @@
-import type { RecordingState } from "../state/recording_state";
+import type { RecordingState } from "../state/recording_state.ts";
 
 export type RecordingSession = {
   state: RecordingState;

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { RecordingController } from "../../src/recording/recording_controller";
+import { RecordingController } from "../../src/recording/recording_controller.ts";
 
 async function run() {
   const calls: string[] = [];
