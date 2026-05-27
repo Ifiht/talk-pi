@@ -3,9 +3,12 @@ import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { createTemporaryWavFile } from "./temp-wav.ts";
 import { resolvePiperConfig, type PiperConfigInput } from "./piper-config.ts";
+import { executableName, resolveToolPath } from "../tools.ts";
+import { ensurePiperTool } from "../tools-bootstrap.ts";
 
 export type PiperClientOptions = PiperConfigInput & {
   spawnImpl?: typeof spawn;
+  onNotify?: (message: string, level?: "info" | "warning" | "error") => void;
 };
 
 export type PiperSynthesisResult = {
@@ -22,10 +25,28 @@ async function pathExists(candidate: string): Promise<boolean> {
   }
 }
 
+function localPiperBinaryCandidates(): string[] {
+  return [
+    resolveToolPath(["piper", executableName("piper")]),
+    resolveToolPath(["piper", "bin", executableName("piper")]),
+  ];
+}
+
 async function resolvePiperBinaryPath(candidate: string): Promise<string> {
   const resolved = candidate.trim();
   if (!resolved) {
     throw new Error("Piper binary path is empty");
+  }
+
+  const candidateHasPath = resolved.includes(path.sep) || resolved.includes("/") || resolved.includes("\\");
+  if (candidateHasPath && (await pathExists(resolved))) {
+    return resolved;
+  }
+
+  for (const local of localPiperBinaryCandidates()) {
+    if (await pathExists(local)) {
+      return local;
+    }
   }
 
   if (path.isAbsolute(resolved) && (await pathExists(resolved))) {
@@ -45,7 +66,7 @@ async function resolvePiperBinaryPath(candidate: string): Promise<string> {
   }
 
   throw new Error(
-    `Piper binary not found: ${resolved}. Set TALK_PI_PIPER_BIN or add piper to PATH.`,
+    `Piper binary not found: ${resolved}. Put it in ./tools/piper or set TALK_PI_PIPER_BIN.`,
   );
 }
 
@@ -59,6 +80,7 @@ export async function synthesizeSpeechToWav(
   }
 
   const config = resolvePiperConfig(options);
+  await ensurePiperTool({ env: config.env, onNotify: options.onNotify });
   const binaryPath = await resolvePiperBinaryPath(config.binaryPath);
   const modelPath = config.modelPath;
   const tempFile = await createTemporaryWavFile(config.outputDir);

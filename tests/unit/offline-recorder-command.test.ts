@@ -1,57 +1,30 @@
 import assert from "node:assert/strict";
-import { buildRecorderCommand } from "../../src/voice/offline-recorder.ts";
+import { Readable } from "node:stream";
+import { createDecibriCapture } from "../../src/voice/decibri-capture.ts";
 
-assert.deepEqual(buildRecorderCommand({}, "sox").args, [
-  "--default-device",
-  "--no-show-progress",
-  "--rate",
-  "16000",
-  "--channels",
-  "1",
-  "--encoding",
-  "signed-integer",
-  "--bits",
-  "16",
-  "--type",
-  "wav",
-  "-",
-]);
+async function run() {
+  const calls: unknown[] = [];
+  const stream = Object.assign(Readable.from([Buffer.from([1, 2, 3, 4])]), {
+    async stop() {
+      calls.push("stop");
+    },
+  });
 
-assert.deepEqual(buildRecorderCommand({ device: "hw:1" }, "arecord").args, [
-  "-D",
-  "hw:1",
-  "-q",
-  "-r",
-  "16000",
-  "-c",
-  "1",
-  "-t",
-  "wav",
-  "-f",
-  "S16_LE",
-  "-",
-]);
+  const capture = createDecibriCapture(
+    { sampleRate: 22050, channels: 2, format: "int16", vad: true },
+    function MockDecibri(options?: Record<string, unknown>) {
+      calls.push(options);
+      return stream;
+    } as never,
+  );
 
-assert.deepEqual(buildRecorderCommand({ endOnSilence: true, threshold: 0.8, silence: "2.0" }, "rec").args, [
-  "-q",
-  "-r",
-  "16000",
-  "-c",
-  "1",
-  "-e",
-  "signed-integer",
-  "-b",
-  "16",
-  "-t",
-  "wav",
-  "-",
-  "silence",
-  "1",
-  "0.1",
-  "0.8%",
-  "1",
-  "2.0",
-  "0.8%",
-]);
+  assert.equal(typeof capture.stream().on, "function");
+  await capture.stop();
+  assert.deepEqual(calls[0], { sampleRate: 22050, channels: 2, device: undefined, format: "int16", vad: true });
+  assert.deepEqual(calls[1], "stop");
+}
 
-assert.equal(buildRecorderCommand({ device: "hw:1" }, "sox").spawnOptions.env?.AUDIODEV, "hw:1");
+run().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

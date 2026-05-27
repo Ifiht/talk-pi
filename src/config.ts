@@ -1,6 +1,5 @@
-import os from "node:os";
-import path from "node:path";
 import { defaultTemporaryWavRoot } from "./tts/temp-wav.ts";
+import { executableName, resolveToolPath } from "./tools.ts";
 
 export type TalkPiShortcutConfig = {
   sendTranscriptKey: string;
@@ -43,12 +42,12 @@ function normalizedPath(value: string | undefined): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-function defaultPiperModelPath(): string {
-  return path.join(os.homedir(), ".pi", "tts", "piper", "pt_BR-faber-medium.onnx");
+function defaultPiperModelPath(env: NodeJS.ProcessEnv): string {
+  return resolveToolPath(["piper", "models", "pt_BR-faber-medium.onnx"], { env });
 }
 
-function defaultWhisperModelPath(): string {
-  return path.join(os.homedir(), ".pi", "models", "ggml-base.bin");
+function defaultWhisperModelPath(env: NodeJS.ProcessEnv): string {
+  return resolveToolPath(["whisper", "models", "ggml-base.bin"], { env });
 }
 
 function resolveShortcuts(env: NodeJS.ProcessEnv): TalkPiShortcutConfig {
@@ -77,12 +76,12 @@ export function loadTalkPiConfig(env: NodeJS.ProcessEnv = process.env): TalkPiCo
   return {
     shortcuts: resolveShortcuts(env),
     piper: {
-      binaryPath: normalizedPath(env.TALK_PI_PIPER_BIN) ?? "piper",
-      modelPath: normalizedPath(env.TALK_PI_PIPER_MODEL_PATH) ?? defaultPiperModelPath(),
+      binaryPath: normalizedPath(env.TALK_PI_PIPER_BIN) ?? resolveToolPath(["piper", executableName("piper")], { env }),
+      modelPath: normalizedPath(env.TALK_PI_PIPER_MODEL_PATH) ?? defaultPiperModelPath(env),
       outputDir: normalizedPath(env.TALK_PI_TTS_OUTPUT_DIR) ?? defaultTemporaryWavRoot(),
     },
     whisper: {
-      modelPath: normalizedPath(env.TALK_PI_WHISPER_MODEL_PATH) ?? defaultWhisperModelPath(),
+      modelPath: normalizedPath(env.TALK_PI_WHISPER_MODEL_PATH) ?? defaultWhisperModelPath(env),
       modelUrl: normalizedPath(env.TALK_PI_WHISPER_MODEL_URL) ?? DEFAULT_WHISPER_MODEL_URL,
     },
   };

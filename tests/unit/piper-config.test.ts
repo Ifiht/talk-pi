@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { resolvePiperConfig } from "../../src/tts/piper-config.ts";
@@ -23,15 +24,20 @@ function run(): void {
     } as NodeJS.ProcessEnv,
   });
 
-  assert.equal(defaults.binaryPath, "piper");
+  assert.equal(defaults.binaryPath, path.join(process.cwd(), "tools", "piper", process.platform === "win32" ? "piper.exe" : "piper"));
   assert.equal(defaults.modelPath, "/opt/piper/voices/voice.onnx");
   assert.equal(defaults.outputDir, defaultTemporaryWavRoot());
   assert.equal(defaults.outputDir.startsWith(os.tmpdir()), true);
 
-  const fallback = resolvePiperConfig({ env: {} as NodeJS.ProcessEnv });
+  const toolsDir = fs.mkdtempSync(path.join(os.tmpdir(), "talk-pi-tools-"));
+  const fallback = resolvePiperConfig({ env: { TALK_PI_TOOLS_DIR: toolsDir } as NodeJS.ProcessEnv });
+  assert.equal(
+    fallback.binaryPath,
+    path.join(toolsDir, "piper", process.platform === "win32" ? "piper.exe" : "piper"),
+  );
   assert.equal(
     fallback.modelPath,
-    path.join(os.homedir(), ".pi", "tts", "piper", "pt_BR-faber-medium.onnx"),
+    path.join(toolsDir, "piper", "models", "pt_BR-faber-medium.onnx"),
   );
 }
 

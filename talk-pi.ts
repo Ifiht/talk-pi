@@ -63,6 +63,7 @@ export default function (pi: ExtensionAPI) {
       transcribe: (filePath: string) => transcribeAudioFile(filePath, {
         ...config.whisper,
         language: piperSelection?.whisperLanguage ?? "pt",
+        onNotify: (message, level) => activeCtx?.ui.notify(message, level ?? "info"),
       }),
     },
   );
@@ -82,9 +83,13 @@ export default function (pi: ExtensionAPI) {
         syncStatus(activeCtx);
       }
     },
-    piper: async () => resolvePiperRuntimeConfig({
-      ...config.piper,
-      modelPath: piperSelection?.modelPath ?? config.piper.modelPath,
+    piper: async () => ({
+      ...(await resolvePiperRuntimeConfig({
+        ...config.piper,
+        modelPath: piperSelection?.modelPath ?? config.piper.modelPath,
+        env: process.env,
+      })),
+      onNotify: (message: string, level?: "info" | "warning" | "error") => activeCtx?.ui.notify(message, level ?? "info"),
     }),
   });
 

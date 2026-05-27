@@ -7,7 +7,13 @@ function matchesKey(data: string, key: string): boolean {
 
 const DEFAULT_PUSH_TO_TALK_KEY = "f10";
 const STOP_CAPTURE_TIMEOUT_MS = 3000;
-const TRANSCRIBE_TIMEOUT_MS = 60000;
+const DEFAULT_TRANSCRIBE_TIMEOUT_MS = 60000;
+const FIRST_TRANSCRIBE_TIMEOUT_MS = 600000;
+
+function parseTimeoutMs(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -48,11 +54,15 @@ export function createVoiceCaptureSession(
 ): VoiceCaptureSession {
   const pushToTalkKey = options.pushToTalkKey?.trim().toLowerCase() || DEFAULT_PUSH_TO_TALK_KEY;
   const captureFactory = options.captureFactory ?? startMicCapture;
-  const transcribe = options.transcribe ?? ((filePath: string) => transcribeAudioFile(filePath, options.whisper));
+  const whisperEnv = options.whisper?.env ?? process.env;
+  const transcribeTimeoutMs = parseTimeoutMs(whisperEnv.TALK_PI_TRANSCRIBE_TIMEOUT_MS, DEFAULT_TRANSCRIBE_TIMEOUT_MS);
+  const firstTranscribeTimeoutMs = Math.max(transcribeTimeoutMs, parseTimeoutMs(whisperEnv.TALK_PI_TRANSCRIBE_FIRST_TIMEOUT_MS, FIRST_TRANSCRIBE_TIMEOUT_MS));
+  const transcribe = options.transcribe ?? ((filePath: string) => transcribeAudioFile(filePath, { ...options.whisper, onNotify: notify }));
   let status: VoiceCaptureStatus = "idle";
   let message = "Ready";
   let capture: MicCapture | undefined;
   let active = false;
+  let hasTranscribedOnce = false;
 
   const set = (nextStatus: VoiceCaptureStatus, nextMessage: string) => {
     status = nextStatus;
@@ -85,7 +95,8 @@ export function createVoiceCaptureSession(
     try {
       await withTimeout(Promise.resolve(currentCapture.stop()), STOP_CAPTURE_TIMEOUT_MS, "Recording stop");
 
-      const result = await withTimeout(transcribe(filePath), TRANSCRIBE_TIMEOUT_MS, "Transcription");
+      const timeoutMs = hasTranscribedOnce ? transcribeTimeoutMs : firstTranscribeTimeoutMs;
+      const result = await withTimeout(transcribe(filePath), timeoutMs, "Transcription");
       const text = String(result?.text ?? "").trim();
       if (!text) {
         set("idle", "No speech detected");
@@ -101,6 +112,7 @@ export function createVoiceCaptureSession(
       notify(error instanceof Error ? error.message : "Transcription failed", "error");
       return undefined;
     } finally {
+      hasTranscribedOnce = true;
       await cleanupCapture(filePath);
     }
   };

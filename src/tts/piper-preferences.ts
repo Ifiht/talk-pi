@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { resolveToolPath } from "../tools.ts";
 
 export type PiperModel = {
   id: string;
@@ -45,8 +46,8 @@ const DEFAULT_PREFERENCE: PiperVoicePreference = {
   updatedAt: new Date(0).toISOString(),
 };
 
-function homePiperDir(env: NodeJS.ProcessEnv): string {
-  return env.TALK_PI_PIPER_MODELS_DIR?.trim() || path.join(os.homedir(), ".pi", "tts", "piper");
+function piperToolsDir(env: NodeJS.ProcessEnv): string {
+  return env.TALK_PI_PIPER_MODELS_DIR?.trim() || resolveToolPath(["piper"], { env });
 }
 
 function preferenceFilePath(env: NodeJS.ProcessEnv): string {
@@ -93,7 +94,7 @@ async function walkOnnxFiles(root: string): Promise<string[]> {
 
 export async function discoverPiperModels(options: PiperPreferenceOptions = {}): Promise<PiperModel[]> {
   const env = options.env ?? process.env;
-  const roots = new Set<string>([homePiperDir(env)]);
+  const roots = new Set<string>([piperToolsDir(env)]);
   const currentModelPath = options.modelPath?.trim() || env.TALK_PI_PIPER_MODEL_PATH?.trim();
   if (currentModelPath) roots.add(path.dirname(currentModelPath));
   const extraRoots = env.TALK_PI_PIPER_MODELS_DIRS?.split(path.delimiter).map((value) => value.trim()).filter(Boolean) ?? [];
@@ -186,7 +187,7 @@ export async function resolvePiperVoiceSelection(options: PiperPreferenceOptions
       preference,
       activeModel: baseModel,
       activeOutputKind,
-      modelPath: baseModel?.path ?? currentModelPath ?? path.join(os.homedir(), ".pi", "tts", "piper", "pt_BR-faber-medium.onnx"),
+      modelPath: baseModel?.path ?? currentModelPath ?? resolveToolPath(["piper", "models", "pt_BR-faber-medium.onnx"], { env }),
       whisperLanguage,
       outputLabel,
     };
@@ -197,7 +198,7 @@ export async function resolvePiperVoiceSelection(options: PiperPreferenceOptions
     preference,
     activeModel,
     activeOutputKind,
-    modelPath: activeModel?.path ?? currentModelPath ?? path.join(os.homedir(), ".pi", "tts", "piper", "pt_BR-faber-medium.onnx"),
+    modelPath: activeModel?.path ?? currentModelPath ?? resolveToolPath(["piper", "models", "pt_BR-faber-medium.onnx"], { env }),
     whisperLanguage,
     outputLabel,
   };

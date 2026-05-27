@@ -1,0 +1,180 @@
+import fs from "node:fs";
+import fsp from "node:fs/promises";
+import https from "node:https";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { executableName, resolveToolPath } from "./tools.ts";
+
+export type ToolNotifyLevel = "info" | "warning" | "error";
+export type ToolNotify = (message: string, level?: ToolNotifyLevel) => void;
+
+export type ToolBootstrapOptions = {
+  env?: NodeJS.ProcessEnv;
+  onNotify?: ToolNotify;
+};
+
+const PIPER_WINDOWS_ZIP = "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip";
+const PIPER_VOICE_MODEL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx";
+const PIPER_VOICE_MODEL_JSON = "https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json";
+
+function notify(options: ToolBootstrapOptions, message: string, level: ToolNotifyLevel = "info"): void {
+  options.onNotify?.(message, level);
+}
+
+function toolRoot(options: ToolBootstrapOptions): string {
+  return resolveToolPath([], options);
+}
+
+function piperBinaryPath(options: ToolBootstrapOptions): string {
+  return path.join(toolRoot(options), "piper", executableName("piper"));
+}
+
+function piperVoiceModelPath(options: ToolBootstrapOptions): string {
+  return path.join(toolRoot(options), "piper", "models", "pt_BR-faber-medium.onnx");
+}
+
+function piperVoiceModelJsonPath(options: ToolBootstrapOptions): string {
+  return path.join(toolRoot(options), "piper", "models", "pt_BR-faber-medium.onnx.json");
+}
+
+function whisperModelPath(options: ToolBootstrapOptions): string {
+  return path.join(toolRoot(options), "whisper", "models", "ggml-base.bin");
+}
+
+function exists(filePath: string): boolean {
+  return fs.existsSync(filePath);
+}
+
+async function ensureDir(dir: string): Promise<void> {
+  await fsp.mkdir(dir, { recursive: true });
+}
+
+async function downloadFile(url: string, targetPath: string): Promise<void> {
+  await ensureDir(path.dirname(targetPath));
+  await fsp.unlink(targetPath).catch(() => undefined);
+
+  await new Promise<void>((resolve, reject) => {
+    const file = fs.createWriteStream(targetPath);
+    const cleanup = () => void fsp.unlink(targetPath).catch(() => undefined);
+    const request = https.get(url, (response) => {
+      if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        const nextUrl = new URL(response.headers.location, url).toString();
+        response.resume();
+        file.close(cleanup);
+        downloadFile(nextUrl, targetPath).then(resolve).catch(reject);
+        return;
+      }
+
+      if (response.statusCode !== 200) {
+        file.close(cleanup);
+        reject(new Error(`Download failed: HTTP ${response.statusCode}`));
+        return;
+      }
+
+      response.pipe(file);
+      file.once("finish", () => {
+        file.close((error) => {
+          if (error) {
+            cleanup();
+            reject(error);
+            return;
+          }
+          resolve();
+        });
+      });
+    });
+
+    request.on("error", (error) => {
+      file.close(cleanup);
+      reject(error);
+    });
+
+    file.on("error", (error) => {
+      request.destroy(error);
+      cleanup();
+      reject(error);
+    });
+  });
+}
+
+async function extractZip(zipPath: string, destination: string): Promise<void> {
+  if (process.platform !== "win32") {
+    throw new Error("Auto-download zip extraction only supported on Windows.");
+  }
+
+  await ensureDir(destination);
+  const command = [
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-Command",
+    `Expand-Archive -LiteralPath ${JSON.stringify(zipPath)} -DestinationPath ${JSON.stringify(destination)} -Force`,
+  ];
+  const result = spawnSync("powershell.exe", command, { stdio: "ignore" });
+  if (result.status !== 0) {
+    throw new Error(`Archive extraction failed for ${path.basename(zipPath)}`);
+  }
+}
+
+async function flattenSingleChild(source: string): Promise<string> {
+  const entries = await fsp.readdir(source, { withFileTypes: true }).catch(() => [] as import("node:fs").Dirent[]);
+  if (entries.length !== 1) return source;
+  const only = entries[0];
+  if (only?.isDirectory()) return path.join(source, only.name);
+  return source;
+}
+
+async function copyTree(source: string, destination: string): Promise<void> {
+  await ensureDir(destination);
+  await fsp.cp(source, destination, { recursive: true, force: true });
+}
+
+async function bootstrapWindowsZip(url: string, targetDir: string): Promise<void> {
+  const tempRoot = await fsp.mkdtemp(path.join(os.tmpdir(), "talk-pi-tools-"));
+  const zipPath = path.join(tempRoot, "archive.zip");
+  const extractDir = path.join(tempRoot, "extract");
+  try {
+    await downloadFile(url, zipPath);
+    await extractZip(zipPath, extractDir);
+    const sourceRoot = await flattenSingleChild(extractDir);
+    await copyTree(sourceRoot, targetDir);
+  } finally {
+    await fsp.rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
+export async function ensurePiperTool(options: ToolBootstrapOptions = {}): Promise<{ binaryPath: string; modelPath: string }> {
+  const binary = piperBinaryPath(options);
+  const model = piperVoiceModelPath(options);
+  const modelJson = piperVoiceModelJsonPath(options);
+
+  if (exists(binary) && exists(model) && exists(modelJson)) {
+    return { binaryPath: binary, modelPath: model };
+  }
+
+  if (process.platform !== "win32") {
+    throw new Error("Piper missing. Put `tools/piper` in package or set TALK_PI_TOOLS_DIR.");
+  }
+
+  notify(options, "Talk-pi: Downloading 📥 Piper", "info");
+  await bootstrapWindowsZip(PIPER_WINDOWS_ZIP, path.join(toolRoot(options), "piper"));
+  if (!exists(model)) {
+    notify(options, "Talk-pi: Downloading 📥 Piper voice model", "info");
+    await ensureDir(path.dirname(model));
+    await downloadFile(PIPER_VOICE_MODEL, model);
+    await downloadFile(PIPER_VOICE_MODEL_JSON, modelJson);
+  }
+
+  return { binaryPath: binary, modelPath: model };
+}
+
+export async function ensureWhisperToolModel(options: ToolBootstrapOptions = {}): Promise<string> {
+  const model = whisperModelPath(options);
+  if (exists(model)) return model;
+
+  notify(options, "Talk-pi: Downloading 📥 Whisper model", "info");
+  await ensureDir(path.dirname(model));
+  await downloadFile("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin", model);
+  return model;
+}

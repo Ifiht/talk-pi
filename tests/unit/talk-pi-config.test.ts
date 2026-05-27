@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { loadTalkPiConfig } from "../../src/config.ts";
@@ -31,17 +32,18 @@ function run(): void {
     modelUrl: "https://example.com/whisper.bin",
   });
 
-  const defaults = loadTalkPiConfig({} as NodeJS.ProcessEnv);
+  const toolsDir = fs.mkdtempSync(path.join(os.tmpdir(), "talk-pi-tools-"));
+  const defaults = loadTalkPiConfig({ TALK_PI_TOOLS_DIR: toolsDir } as NodeJS.ProcessEnv);
 
-  assert.equal(defaults.piper.binaryPath, "piper");
+  assert.equal(defaults.piper.binaryPath, path.join(toolsDir, "piper", process.platform === "win32" ? "piper.exe" : "piper"));
   assert.equal(defaults.piper.outputDir, defaultTemporaryWavRoot());
   assert.equal(
     defaults.piper.modelPath,
-    path.join(os.homedir(), ".pi", "tts", "piper", "pt_BR-faber-medium.onnx"),
+    path.join(toolsDir, "piper", "models", "pt_BR-faber-medium.onnx"),
   );
   assert.equal(
     defaults.whisper.modelPath,
-    path.join(os.homedir(), ".pi", "models", "ggml-base.bin"),
+    path.join(toolsDir, "whisper", "models", "ggml-base.bin"),
   );
 }
 

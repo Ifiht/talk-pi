@@ -6,7 +6,8 @@ import { discoverPiperModels, loadPiperVoicePreference, resolvePiperVoiceSelecti
 
 async function run() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "talk-pi-piper-prefs-"));
-  const modelsDir = path.join(dir, "models");
+  const piperDir = path.join(dir, "piper");
+  const modelsDir = path.join(piperDir, "models");
   fs.mkdirSync(modelsDir, { recursive: true });
   const english = path.join(modelsDir, "en_US-lessac-medium.onnx");
   const pt = path.join(modelsDir, "pt_BR-faber-medium.onnx");
@@ -15,6 +16,7 @@ async function run() {
 
   const prefPath = path.join(dir, "prefs.json");
   const env = {
+    TALK_PI_TOOLS_DIR: dir,
     TALK_PI_PIPER_MODELS_DIR: modelsDir,
     TALK_PI_PIPER_PREFERENCES_PATH: prefPath,
   } as NodeJS.ProcessEnv;

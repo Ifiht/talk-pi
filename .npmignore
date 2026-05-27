@@ -1,0 +1,7 @@
+specs/
+tests/
+.specify/
+.vscode/
+.git/
+*.log
+*.tmp

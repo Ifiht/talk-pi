@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import https from "node:https";
-import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { resolveToolPath } from "../tools.ts";
 
 type WhisperModule = typeof import("whisper-cpp-node");
 
@@ -34,10 +34,11 @@ export type WhisperConfig = {
   modelUrl?: string;
   language?: string;
   env?: NodeJS.ProcessEnv;
+  onNotify?: (message: string, level?: "info" | "warning" | "error") => void;
 };
 
-function homeModelPath(env: NodeJS.ProcessEnv = process.env): string {
-  return env.TALK_PI_WHISPER_MODEL_PATH ?? path.join(os.homedir(), ".pi", "models", "ggml-base.bin");
+function defaultModelPath(env: NodeJS.ProcessEnv = process.env): string {
+  return env.TALK_PI_WHISPER_MODEL_PATH ?? resolveToolPath(["whisper", "models", "ggml-base.bin"], { env });
 }
 
 async function downloadFile(url: string, targetPath: string): Promise<void> {
@@ -46,32 +47,43 @@ async function downloadFile(url: string, targetPath: string): Promise<void> {
 
   await new Promise<void>((resolve, reject) => {
     const file = fs.createWriteStream(targetPath);
+    const cleanup = () => void fsp.unlink(targetPath).catch(() => undefined);
     const request = https.get(url, (response) => {
       if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
         const nextUrl = new URL(response.headers.location, url).toString();
         response.resume();
-        file.close(() => void fsp.unlink(targetPath).catch(() => undefined));
+        file.close(cleanup);
         downloadFile(nextUrl, targetPath).then(resolve).catch(reject);
         return;
       }
 
       if (response.statusCode !== 200) {
-        file.close(() => void fsp.unlink(targetPath).catch(() => undefined));
+        file.close(cleanup);
         reject(new Error(`Model download failed: HTTP ${response.statusCode}`));
         return;
       }
 
       response.pipe(file);
-      file.on("finish", () => file.close(resolve));
+      file.once("finish", () => {
+        file.close((error) => {
+          if (error) {
+            cleanup();
+            reject(error);
+            return;
+          }
+          resolve();
+        });
+      });
     });
 
     request.on("error", (error) => {
-      file.close(() => void fsp.unlink(targetPath).catch(() => undefined));
+      file.close(cleanup);
       reject(error);
     });
 
     file.on("error", (error) => {
       request.destroy(error);
+      cleanup();
       reject(error);
     });
   });
@@ -79,7 +91,7 @@ async function downloadFile(url: string, targetPath: string): Promise<void> {
 
 export async function ensureWhisperModel(options: WhisperConfig = {}): Promise<string> {
   const env = options.env ?? process.env;
-  const modelPath = options.modelPath?.trim() || homeModelPath(env);
+  const modelPath = options.modelPath?.trim() || defaultModelPath(env);
   const modelUrl = options.modelUrl?.trim() || env.TALK_PI_WHISPER_MODEL_URL?.trim() || DEFAULT_MODEL_URL;
   try {
     const stats = await fsp.stat(modelPath);
@@ -88,6 +100,7 @@ export async function ensureWhisperModel(options: WhisperConfig = {}): Promise<s
     // download below
   }
 
+  options.onNotify?.(`Talk-pi: Downloading 📥 Whisper model`, "info");
   await downloadFile(modelUrl, modelPath);
   return modelPath;
 }
@@ -95,13 +108,26 @@ export async function ensureWhisperModel(options: WhisperConfig = {}): Promise<s
 let cachedContext: ReturnType<WhisperModule["createWhisperContext"]> | undefined;
 let cachedModelPath: string | undefined;
 
+async function createContextWithRetry(modelPath: string, options: WhisperConfig, retry = true): Promise<ReturnType<WhisperModule["createWhisperContext"]>> {
+  const { createWhisperContext } = loadWhisperModule();
+  try {
+    return createWhisperContext({ model: modelPath, use_gpu: false, no_prints: true });
+  } catch (error) {
+    if (!retry) throw error;
+    await fsp.unlink(modelPath).catch(() => undefined);
+    options.onNotify?.(`Talk-pi: Downloading 📥 Whisper model`, "info");
+    const refreshedPath = await ensureWhisperModel(options);
+    return createContextWithRetry(refreshedPath, options, false);
+  }
+}
+
 export async function transcribeAudioFile(filePath: string, options: WhisperConfig = {}): Promise<WhisperResult> {
   const modelPath = await ensureWhisperModel(options);
-  const { createWhisperContext, transcribeAsync } = loadWhisperModule();
+  const { transcribeAsync } = loadWhisperModule();
 
   if (!cachedContext || cachedModelPath !== modelPath) {
     cachedContext?.free?.();
-    cachedContext = createWhisperContext({ model: modelPath, use_gpu: false, no_prints: true });
+    cachedContext = await createContextWithRetry(modelPath, options);
     cachedModelPath = modelPath;
   }
 
