@@ -21,7 +21,7 @@ async function run() {
   await setPiperOutputKind("english", { env });
   const selection = await resolvePiperVoiceSelection({ env });
 
-  assert.equal(selection.outputLabel, "English");
+  assert.equal(selection.outputLabel, "English - Lessac");
   assert.equal(selection.whisperLanguage, "en");
   assert.equal(selection.modelPath, english);
 }

@@ -9,10 +9,11 @@ import { openUnifiedTalkMenu } from "./src/ui/unified-talk-menu.ts";
 import { formatFooterStatusFromState } from "./src/ui/footer-status.ts";
 import { extractAssistantReplyText } from "./src/tts/assistant-reply.ts";
 import { createPlaybackQueue } from "./src/tts/playback-queue.ts";
-import { resolvePiperRuntimeConfig, resolvePiperVoiceSelection, setPiperOutputKind, setPiperVoiceModel, type PiperPreferenceResolution } from "./src/tts/piper-preferences.ts";
+import { resolvePiperRuntimeConfig, resolvePiperVoiceSelection, setPiperOutputKind, setPiperVoiceModel, friendlyModelLabel, type PiperPreferenceResolution } from "./src/tts/piper-preferences.ts";
 import { transcribeAudioFile } from "./src/voice/offline-whisper.ts";
 import { createVoiceCaptureSession } from "./src/voice/voice-capture.ts";
 import { loadTalkPiConfig } from "./src/config.ts";
+import { ensurePiperTool } from "./src/tools-bootstrap.ts";
 
 type ExtensionContext = {
   ui: {
@@ -133,6 +134,13 @@ export default function (pi: ExtensionAPI) {
     await playbackQueue.setMuted(muteState.isMuted());
     syncStatus(ctx);
 
+    void ensurePiperTool({
+      env: process.env,
+      onNotify: (message, level) => ctx.ui.notify(message, level ?? "info"),
+    }).then(async () => {
+      piperSelection = await resolvePiperVoiceSelection();
+    }).catch(() => undefined);
+
     ctx.ui.setEditorComponent?.((tui, theme, keybindings) => {
       class PushToTalkEditor extends CustomEditor {
         private recording = false;
@@ -248,12 +256,24 @@ export default function (pi: ExtensionAPI) {
             return;
           }
 
-          const englishModel = selection.models.find((model) => model.language === "english");
-          const portugueseModel = selection.models.find((model) => model.language !== "english") ?? selection.activeModel ?? selection.models[0];
+          const englishModels = selection.models.filter((model) => model.language === "english");
+          const portugueseModels = selection.models.filter((model) => model.language !== "english");
+          const portugueseModel = portugueseModels[0] ?? selection.activeModel ?? selection.models[0];
+          const isActivePortuguese = selection.activeOutputKind === "default";
           const choices = [
-            { label: `Portuguese${selection.outputLabel === "Portuguese" ? " (active)" : ""}`, kind: "default" as const, model: portugueseModel },
-            { label: `English${selection.outputLabel === "English" ? " (active)" : ""}`, kind: "english" as const, model: englishModel },
+            ...englishModels.map((model) => {
+              const isActive = selection.activeOutputKind === "english" && selection.activeModel?.id === model.id;
+              return { label: `English - ${friendlyModelLabel(model.path)}${isActive ? " (active)" : ""}`, kind: "english" as const, model };
+            }),
+            ...portugueseModels.map((model) => {
+              const isActive = isActivePortuguese && (selection.activeModel?.id === model.id || portugueseModels.length === 1);
+              return { label: `Portuguese - ${friendlyModelLabel(model.path)}${isActive ? " (active)" : ""}`, kind: "default" as const, model };
+            }),
           ].filter((choice) => Boolean(choice.model));
+
+          if (!choices.length) {
+            choices.push({ label: `Portuguese${isActivePortuguese ? " (active)" : ""}`, kind: "default" as const, model: portugueseModel! });
+          }
 
           const labels = choices.map((choice) => choice.label);
           const choice = await ctx.ui.select("Choose Voice Language", labels, { overlay: true });
@@ -264,7 +284,8 @@ export default function (pi: ExtensionAPI) {
           await setPiperVoiceModel(selected.model.id);
           await setPiperOutputKind(selected.kind);
           piperSelection = await resolvePiperVoiceSelection();
-          ctx.ui.notify(`Voice language set to ${selected.kind === "english" ? "English" : "Portuguese"}`, "info");
+          const notifyLabel = selected.kind === "english" ? `English - ${friendlyModelLabel(selected.model.path)}` : `Portuguese - ${friendlyModelLabel(selected.model.path)}`;
+          ctx.ui.notify(`Voice language set to ${notifyLabel}`, "info");
           syncStatus(ctx);
         },
       });

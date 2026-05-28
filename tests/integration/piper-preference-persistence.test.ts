@@ -22,12 +22,12 @@ async function run() {
   await setPiperOutputKind("english", { env });
 
   const first = await resolvePiperVoiceSelection({ env });
-  assert.equal(first.outputLabel, "English");
+  assert.equal(first.outputLabel, "English - Lessac");
   assert.equal(first.whisperLanguage, "en");
   assert.equal(first.modelPath, english);
 
   const second = await resolvePiperVoiceSelection({ env });
-  assert.equal(second.outputLabel, "English");
+  assert.equal(second.outputLabel, "English - Lessac");
   assert.equal(second.whisperLanguage, "en");
   assert.equal(second.modelPath, english);
 }

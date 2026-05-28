@@ -35,14 +35,14 @@ async function run() {
   const englishSelection = await resolvePiperVoiceSelection({ env });
   assert.equal(englishSelection.modelPath, english);
   assert.equal(englishSelection.whisperLanguage, "en");
-  assert.equal(englishSelection.outputLabel, "English");
+  assert.equal(englishSelection.outputLabel, "English - Lessac");
 
   await setPiperVoiceModel(pt.replace(/\\/g, "/").replace(/\.onnx$/i, ""), { env });
   await setPiperOutputKind("default", { env });
   const defaultSelection = await resolvePiperVoiceSelection({ env });
   assert.equal(defaultSelection.modelPath, pt);
   assert.equal(defaultSelection.whisperLanguage, "pt");
-  assert.equal(defaultSelection.outputLabel, "Portuguese");
+  assert.equal(defaultSelection.outputLabel, "Portuguese - Faber");
 }
 
 run().catch((error) => {

@@ -17,6 +17,10 @@ export type ToolBootstrapOptions = {
 const PIPER_WINDOWS_ZIP = "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip";
 const PIPER_VOICE_MODEL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx";
 const PIPER_VOICE_MODEL_JSON = "https://huggingface.co/rhasspy/piper-voices/resolve/main/pt/pt_BR/faber/medium/pt_BR-faber-medium.onnx.json";
+const PIPER_RYAN_VOICE_MODEL = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ryan/medium/en_US-ryan-medium.onnx";
+const PIPER_RYAN_VOICE_MODEL_JSON = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ryan/medium/en_US-ryan-medium.onnx.json";
+const PIPER_LESSAC_VOICE_MODEL = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx";
+const PIPER_LESSAC_VOICE_MODEL_JSON = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json";
 
 function notify(options: ToolBootstrapOptions, message: string, level: ToolNotifyLevel = "info"): void {
   options.onNotify?.(message, level);
@@ -36,6 +40,22 @@ function piperVoiceModelPath(options: ToolBootstrapOptions): string {
 
 function piperVoiceModelJsonPath(options: ToolBootstrapOptions): string {
   return path.join(toolRoot(options), "piper", "models", "pt_BR-faber-medium.onnx.json");
+}
+
+function piperRyanModelPath(options: ToolBootstrapOptions): string {
+  return path.join(toolRoot(options), "piper", "models", "en_US-ryan-medium.onnx");
+}
+
+function piperRyanModelJsonPath(options: ToolBootstrapOptions): string {
+  return path.join(toolRoot(options), "piper", "models", "en_US-ryan-medium.onnx.json");
+}
+
+function piperLessacModelPath(options: ToolBootstrapOptions): string {
+  return path.join(toolRoot(options), "piper", "models", "en_US-lessac-medium.onnx");
+}
+
+function piperLessacModelJsonPath(options: ToolBootstrapOptions): string {
+  return path.join(toolRoot(options), "piper", "models", "en_US-lessac-medium.onnx.json");
 }
 
 function whisperModelPath(options: ToolBootstrapOptions): string {
@@ -148,22 +168,38 @@ export async function ensurePiperTool(options: ToolBootstrapOptions = {}): Promi
   const binary = piperBinaryPath(options);
   const model = piperVoiceModelPath(options);
   const modelJson = piperVoiceModelJsonPath(options);
+  const ryan = piperRyanModelPath(options);
+  const ryanJson = piperRyanModelJsonPath(options);
 
-  if (exists(binary) && exists(model) && exists(modelJson)) {
-    return { binaryPath: binary, modelPath: model };
+  if (!exists(binary) || !exists(model) || !exists(modelJson)) {
+    if (process.platform !== "win32") {
+      throw new Error("Piper missing. Put `tools/piper` in package or set TALK_PI_TOOLS_DIR.");
+    }
+
+    notify(options, "Talk-pi: Downloading 📥 Piper", "info");
+    await bootstrapWindowsZip(PIPER_WINDOWS_ZIP, path.join(toolRoot(options), "piper"));
+    if (!exists(model) || !exists(modelJson)) {
+      notify(options, "Talk-pi: Downloading 📥 Piper voice model", "info");
+      await ensureDir(path.dirname(model));
+      await downloadFile(PIPER_VOICE_MODEL, model);
+      await downloadFile(PIPER_VOICE_MODEL_JSON, modelJson);
+    }
   }
 
-  if (process.platform !== "win32") {
-    throw new Error("Piper missing. Put `tools/piper` in package or set TALK_PI_TOOLS_DIR.");
+  if (!exists(ryan) || !exists(ryanJson)) {
+    notify(options, "Talk-pi: Downloading 📥 Piper English voice (Ryan)", "info");
+    await ensureDir(path.dirname(ryan));
+    await downloadFile(PIPER_RYAN_VOICE_MODEL, ryan);
+    await downloadFile(PIPER_RYAN_VOICE_MODEL_JSON, ryanJson);
   }
 
-  notify(options, "Talk-pi: Downloading 📥 Piper", "info");
-  await bootstrapWindowsZip(PIPER_WINDOWS_ZIP, path.join(toolRoot(options), "piper"));
-  if (!exists(model)) {
-    notify(options, "Talk-pi: Downloading 📥 Piper voice model", "info");
-    await ensureDir(path.dirname(model));
-    await downloadFile(PIPER_VOICE_MODEL, model);
-    await downloadFile(PIPER_VOICE_MODEL_JSON, modelJson);
+  const lessac = piperLessacModelPath(options);
+  const lessacJson = piperLessacModelJsonPath(options);
+  if (!exists(lessac) || !exists(lessacJson)) {
+    notify(options, "Talk-pi: Downloading 📥 Piper English voice (Lessac)", "info");
+    await ensureDir(path.dirname(lessac));
+    await downloadFile(PIPER_LESSAC_VOICE_MODEL, lessac);
+    await downloadFile(PIPER_LESSAC_VOICE_MODEL_JSON, lessacJson);
   }
 
   return { binaryPath: binary, modelPath: model };

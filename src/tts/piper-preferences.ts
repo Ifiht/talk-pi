@@ -62,6 +62,19 @@ function modelLabel(modelPath: string): string {
   return path.basename(modelPath).replace(/\.onnx$/i, "");
 }
 
+const FRIENDLY_LABELS: Record<string, string> = {
+  "en_US-lessac-medium": "Lessac",
+  "en_US-ryan-medium": "Ryan",
+  "pt_BR-faber-medium": "Faber",
+};
+
+export function friendlyModelLabel(modelPath: string): string {
+  const base = modelLabel(modelPath);
+  if (FRIENDLY_LABELS[base]) return FRIENDLY_LABELS[base]!;
+  const match = base.match(/^[a-z]{2}(?:_[A-Z]{2})?-([^-]+)/);
+  return match ? match[1]! : base;
+}
+
 function detectLanguage(modelPath: string): "english" | "other" {
   const label = modelLabel(modelPath).toLowerCase();
   return /^en([_-]|$)/.test(label) || label.includes("english") ? "english" : "other";
@@ -94,26 +107,10 @@ async function walkOnnxFiles(root: string): Promise<string[]> {
 
 export async function discoverPiperModels(options: PiperPreferenceOptions = {}): Promise<PiperModel[]> {
   const env = options.env ?? process.env;
-  const roots = new Set<string>([piperToolsDir(env)]);
-  const currentModelPath = options.modelPath?.trim() || env.TALK_PI_PIPER_MODEL_PATH?.trim();
-  if (currentModelPath) roots.add(path.dirname(currentModelPath));
-  const extraRoots = env.TALK_PI_PIPER_MODELS_DIRS?.split(path.delimiter).map((value) => value.trim()).filter(Boolean) ?? [];
-  for (const root of extraRoots) roots.add(root);
+  const root = piperToolsDir(env);
+  const files: string[] = await pathExists(root) ? await walkOnnxFiles(root) : [];
 
-  const files = new Set<string>();
-  for (const root of roots) {
-    if (await pathExists(root)) {
-      for (const file of await walkOnnxFiles(root)) {
-        files.add(file);
-      }
-    }
-  }
-
-  if (currentModelPath && (await pathExists(currentModelPath))) {
-    files.add(currentModelPath);
-  }
-
-  return [...files].sort((a, b) => a.localeCompare(b)).map((modelPath) => ({
+  return [...new Set(files)].sort((a, b) => a.localeCompare(b)).map((modelPath) => ({
     id: normalizeModelId(modelPath),
     label: modelLabel(modelPath),
     language: detectLanguage(modelPath),
@@ -177,9 +174,12 @@ export async function resolvePiperVoiceSelection(options: PiperPreferenceOptions
   const baseModel = selectedModel(models, preference, currentModelPath);
   const english = englishModel(models);
   const activeOutputKind = preference.selectedOutputKind === "english" ? "english" : "default";
-  const activeModel = activeOutputKind === "english" ? (english ?? baseModel) : baseModel;
+  const selectedEnglish = baseModel?.language === "english" ? baseModel : english;
+  const activeModel = activeOutputKind === "english" ? (selectedEnglish ?? baseModel) : baseModel;
   const whisperLanguage = activeModel?.language === "english" ? "en" : "pt";
-  const outputLabel = activeOutputKind === "english" ? "English" : "Portuguese";
+  const outputLabel = activeOutputKind === "english"
+    ? `English - ${activeModel ? friendlyModelLabel(activeModel.path) : "unknown"}`
+    : `Portuguese - ${activeModel ? friendlyModelLabel(activeModel.path) : "Faber"}`;
 
   if (activeOutputKind === "english" && !english) {
     return {
