@@ -59,7 +59,7 @@ export default function (pi: ExtensionAPI) {
       activeCtx?.ui.notify(message, level);
     },
     {
-      pushToTalkKey: shortcutConfig.pushToTalkKey,
+      insertTranscriptKey: shortcutConfig.insertTranscriptKey,
       transcribe: (filePath: string) => transcribeAudioFile(filePath, {
         ...config.whisper,
         language: piperSelection?.whisperLanguage ?? "pt",
@@ -105,7 +105,7 @@ export default function (pi: ExtensionAPI) {
     const base = getFooterStatusText();
     const modelLabel = piperSelection?.activeModel?.label ?? path.basename(config.piper.modelPath);
     const outputLabel = piperSelection?.outputLabel ?? "Portuguese";
-    return `${base} | Voice Language: ${outputLabel} | Piper: ${modelLabel} | ${shortcutConfig.sendTranscriptKey.toUpperCase()} sends directly | ${shortcutConfig.insertTranscriptKey.toUpperCase()} inserts into editor`;
+    return `${base} | Voice Language: ${outputLabel} | Piper: ${modelLabel} | ${shortcutConfig.sendTranscriptKey.toUpperCase()} sends directly | ${shortcutConfig.insertTranscriptKey.toUpperCase()} inserts / toggles voice`;
   };
 
   const syncStatus = (ctx: ExtensionContext) => {

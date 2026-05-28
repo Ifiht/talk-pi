@@ -5,7 +5,7 @@ function matchesKey(data: string, key: string): boolean {
   return String(data).trim().toLowerCase() === String(key).trim().toLowerCase();
 }
 
-const DEFAULT_PUSH_TO_TALK_KEY = "f10";
+const DEFAULT_INSERT_TRANSCRIPT_KEY = "f10";
 const STOP_CAPTURE_TIMEOUT_MS = 3000;
 const DEFAULT_TRANSCRIBE_TIMEOUT_MS = 60000;
 const FIRST_TRANSCRIBE_TIMEOUT_MS = 600000;
@@ -29,7 +29,7 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: str
 }
 
 export type VoiceCaptureOptions = {
-  pushToTalkKey?: string;
+  insertTranscriptKey?: string;
   whisper?: WhisperConfig;
   captureFactory?: () => MicCapture;
   transcribe?: (filePath: string) => Promise<WhisperResult>;
@@ -52,7 +52,7 @@ export function createVoiceCaptureSession(
   notify: (message: string, level: "info" | "warning" | "error") => void,
   options: VoiceCaptureOptions = {},
 ): VoiceCaptureSession {
-  const pushToTalkKey = options.pushToTalkKey?.trim().toLowerCase() || DEFAULT_PUSH_TO_TALK_KEY;
+  const insertTranscriptKey = options.insertTranscriptKey?.trim().toLowerCase() || DEFAULT_INSERT_TRANSCRIPT_KEY;
   const captureFactory = options.captureFactory ?? startMicCapture;
   const whisperEnv = options.whisper?.env ?? process.env;
   const transcribeTimeoutMs = parseTimeoutMs(whisperEnv.TALK_PI_TRANSCRIBE_TIMEOUT_MS, DEFAULT_TRANSCRIBE_TIMEOUT_MS);
@@ -152,13 +152,13 @@ export function createVoiceCaptureSession(
         "",
         `  Voice: ${status}`,
         `  ${message}`,
-        `  Hold ${pushToTalkKey} to record; release to stop.`,
+        `  Hold ${insertTranscriptKey} to record; release to stop.`,
         "",
       ];
     },
     toggle,
     handleInput(data, done) {
-      if (matchesKey(data, pushToTalkKey)) {
+      if (matchesKey(data, insertTranscriptKey)) {
         void toggle().then(done).catch(() => done(undefined));
         return;
       }

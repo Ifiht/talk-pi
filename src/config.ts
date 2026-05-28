@@ -4,7 +4,6 @@ import { executableName, resolveToolPath } from "./tools.ts";
 export type TalkPiShortcutConfig = {
   sendTranscriptKey: string;
   insertTranscriptKey: string;
-  pushToTalkKey: string;
 };
 
 export type TalkPiPiperConfig = {
@@ -24,7 +23,7 @@ export type TalkPiConfig = {
   whisper: TalkPiWhisperConfig;
 };
 
-const DEFAULT_SHORTCUTS: Omit<TalkPiShortcutConfig, "pushToTalkKey"> = {
+const DEFAULT_SHORTCUTS: TalkPiShortcutConfig = {
   sendTranscriptKey: "f9",
   insertTranscriptKey: "f10",
 };
@@ -53,22 +52,17 @@ function defaultWhisperModelPath(env: NodeJS.ProcessEnv): string {
 function resolveShortcuts(env: NodeJS.ProcessEnv): TalkPiShortcutConfig {
   const sendTranscriptKey = normalized(env.TALK_PI_SEND_TRANSCRIPT_KEY) ?? DEFAULT_SHORTCUTS.sendTranscriptKey;
   const insertTranscriptKey = normalized(env.TALK_PI_INSERT_TRANSCRIPT_KEY) ?? DEFAULT_SHORTCUTS.insertTranscriptKey;
-  const pushToTalkKey = normalized(env.TALK_PI_PUSH_TO_TALK_KEY) ?? insertTranscriptKey;
 
   if (sendTranscriptKey === insertTranscriptKey) {
     console.warn(
       `[talk-pi] Shortcut conflict: TALK_PI_SEND_TRANSCRIPT_KEY and TALK_PI_INSERT_TRANSCRIPT_KEY are both "${sendTranscriptKey}". Using defaults.`,
     );
-    return {
-      ...DEFAULT_SHORTCUTS,
-      pushToTalkKey: normalized(env.TALK_PI_PUSH_TO_TALK_KEY) ?? DEFAULT_SHORTCUTS.insertTranscriptKey,
-    };
+    return DEFAULT_SHORTCUTS;
   }
 
   return {
     sendTranscriptKey,
     insertTranscriptKey,
-    pushToTalkKey,
   };
 }
 
