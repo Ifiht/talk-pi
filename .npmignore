@@ -5,3 +5,4 @@ tests/
 .git/
 *.log
 *.tmp
+tools/
