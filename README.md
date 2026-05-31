@@ -16,30 +16,32 @@ Talk-Pi is Pi extension for local voice capture, Whisper transcription, and Pipe
 pi install npm:talk-pi
 ```
 
-`pi install` brings Talk-Pi package plus bundled tools in `./tools`, so no PATH setup needed.
+`pi install` brings Talk-Pi package plus bundled tools. At runtime, Talk-Pi prefers `~/.pi/tools` when `~/.pi` exists, otherwise it creates/uses local `./tools`, so no PATH setup is needed.
 
 ## Requirements
 
 - Node.js 24+
+- `~/.pi/tools` when a user-scoped `.pi` folder exists, otherwise local `./tools`
 - `./tools/piper/piper` or `./tools/piper/piper.exe`
 - voice capture uses bundled microphone support
 - Piper voice model under `./tools/piper/models/`
 - Whisper model under `./tools/whisper/models/`
 
-Talk-Pi bundles tools in `./tools` and reads them first. No PATH setup needed.
+Talk-Pi prefers `~/.pi/tools` when available and falls back to local `./tools` for fresh installs.
 
 ## Setup & Configuration
 
 1. Copy `.env.example` to `.env`.
 2. Run `pi install npm:talk-pi` to bring bundled tools automatically.
-3. If you run from repo, keep binaries/models under `./tools/piper` and `./tools/whisper`.
-4. Adjust `TALK_PI_TOOLS_DIR` only if `tools/` lives somewhere else.
+3. If `~/.pi` exists, keep user-scoped tools under `~/.pi/tools`.
+4. If `~/.pi` does not exist, Talk-Pi creates and uses local `./tools` in the install folder.
+5. Adjust `TALK_PI_TOOLS_DIR` only if `tools/` lives somewhere else.
 
 | Variable | Default / Note |
 | --- | --- |
 | `TALK_PI_SEND_TRANSCRIPT_KEY` | `F9` |
 | `TALK_PI_INSERT_TRANSCRIPT_KEY` | `F10` |
-| `TALK_PI_TOOLS_DIR` | `./tools` |
+| `TALK_PI_TOOLS_DIR` | `./tools` (override) |
 | `TALK_PI_PIPER_BIN` | `./tools/piper/piper` |
 | `TALK_PI_PIPER_MODEL_PATH` | `./tools/piper/models/pt_BR-faber-medium.onnx` |
 | `TALK_PI_TTS_OUTPUT_DIR` | system temp directory |
@@ -59,10 +61,10 @@ Talk-Pi bundles tools in `./tools` and reads them first. No PATH setup needed.
 ## Platform notes
 
 - Windows, Linux, and macOS use same setup.
-- Unzip Piper into `./tools/piper`.
+- Unzip Piper into `~/.pi/tools/piper` when using a user-scoped `.pi` folder, or `./tools/piper` for a local install.
 - No separate recorder install needed.
-- Put voice and Whisper models under `./tools/piper/models` and `./tools/whisper/models`.
-- `TALK_PI_TOOLS_DIR` only needed if folder lives elsewhere.
+- Put voice and Whisper models under `~/.pi/tools/piper/models` or `./tools/piper/models`, and the Whisper model under the matching `whisper/models` folder.
+- `TALK_PI_TOOLS_DIR` is only needed if the tools folder lives elsewhere.
 
 ## Publish
 

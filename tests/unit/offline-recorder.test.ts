@@ -8,14 +8,23 @@ import { startMicCapture } from "../../src/voice/offline-recorder.ts";
 async function run() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "talk-pi-decibri-"));
   const pcm = Buffer.from([0x01, 0x02, 0x03, 0x04]);
+  let destroyed = false;
 
   const capture = startMicCapture({
     captureDir: () => dir,
     createCapture: () => {
       const stream = Readable.from([pcm]);
+      const originalDestroy = stream.destroy.bind(stream);
       return {
-        stream: () => stream,
-        stop: async () => undefined,
+        stream: () => Object.assign(stream, {
+          destroy() {
+            destroyed = true;
+            return originalDestroy();
+          },
+        }),
+        stop: async () => {
+          assert.equal(destroyed, true);
+        },
       };
     },
   });

@@ -87,8 +87,8 @@ export function startMicCapture(deps: MicCaptureDeps = {}): MicCapture {
         throw streamError;
       }
 
-      await Promise.resolve(recording.stop());
       source.destroy();
+      await Promise.resolve(recording.stop());
       if (streamError) {
         throw streamError;
       }

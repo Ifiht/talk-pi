@@ -139,7 +139,11 @@ export default function (pi: ExtensionAPI) {
       onNotify: (message, level) => ctx.ui.notify(message, level ?? "info"),
     }).then(async () => {
       piperSelection = await resolvePiperVoiceSelection();
-    }).catch(() => undefined);
+    }).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      ctx.ui.notify(message, "error");
+      console.error(error);
+    });
 
     ctx.ui.setEditorComponent?.((tui, theme, keybindings) => {
       class PushToTalkEditor extends CustomEditor {

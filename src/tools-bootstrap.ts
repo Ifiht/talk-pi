@@ -165,11 +165,22 @@ async function bootstrapWindowsZip(url: string, targetDir: string): Promise<void
 }
 
 export async function ensurePiperTool(options: ToolBootstrapOptions = {}): Promise<{ binaryPath: string; modelPath: string }> {
-  const binary = piperBinaryPath(options);
-  const model = piperVoiceModelPath(options);
-  const modelJson = piperVoiceModelJsonPath(options);
-  const ryan = piperRyanModelPath(options);
-  const ryanJson = piperRyanModelJsonPath(options);
+  let binary: string;
+  let model: string;
+  let modelJson: string;
+  let ryan: string;
+  let ryanJson: string;
+
+  try {
+    binary = piperBinaryPath(options);
+    model = piperVoiceModelPath(options);
+    modelJson = piperVoiceModelJsonPath(options);
+    ryan = piperRyanModelPath(options);
+    ryanJson = piperRyanModelJsonPath(options);
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
+    throw new Error(`[talk-pi] Unable to resolve Piper tools path: ${details}`);
+  }
 
   if (!exists(binary) || !exists(model) || !exists(modelJson)) {
     if (process.platform !== "win32") {
@@ -206,7 +217,15 @@ export async function ensurePiperTool(options: ToolBootstrapOptions = {}): Promi
 }
 
 export async function ensureWhisperToolModel(options: ToolBootstrapOptions = {}): Promise<string> {
-  const model = whisperModelPath(options);
+  let model: string;
+
+  try {
+    model = whisperModelPath(options);
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error);
+    throw new Error(`[talk-pi] Unable to resolve Whisper model path: ${details}`);
+  }
+
   if (exists(model)) return model;
 
   notify(options, "Talk-pi: Downloading 📥 Whisper model", "info");
