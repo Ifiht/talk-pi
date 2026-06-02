@@ -37,7 +37,7 @@ function prepareToolDirectory(dirPath: string, label: string): string {
 function resolveUserToolsRoot(env: NodeJS.ProcessEnv): string {
   const piRoot = userPiRoot(env);
   if (!fs.existsSync(piRoot)) {
-    throw new Error(`[talk-pi] Expected user tools root to exist at ${piRoot}`);
+    throw new Error(`[talk-pi] Expected user configuration root to exist at ${piRoot}`);
   }
 
   try {
@@ -46,10 +46,10 @@ function resolveUserToolsRoot(env: NodeJS.ProcessEnv): string {
     }
   } catch (error) {
     const details = error instanceof Error ? error.message : String(error);
-    throw new Error(`[talk-pi] Unable to access user tools root at ${piRoot}: ${details}`);
+    throw new Error(`[talk-pi] Unable to access user configuration root at ${piRoot}: ${details}`);
   }
 
-  return path.join(piRoot, "tools");
+  return prepareToolDirectory(path.join(piRoot, "agent", "extension", "talk-pi"), "user extension folder");
 }
 
 function resolveLocalToolsRoot(cwd: string): string {

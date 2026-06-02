@@ -1,6 +1,6 @@
 {
   "name": "talk-pi",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Pi extension for local tools voice capture, Whisper transcription, and Piper TTS playback",
   "license": "MIT",
   "type": "module",

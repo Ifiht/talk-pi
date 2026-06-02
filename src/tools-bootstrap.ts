@@ -179,12 +179,12 @@ export async function ensurePiperTool(options: ToolBootstrapOptions = {}): Promi
     ryanJson = piperRyanModelJsonPath(options);
   } catch (error) {
     const details = error instanceof Error ? error.message : String(error);
-    throw new Error(`[talk-pi] Unable to resolve Piper tools path: ${details}`);
+    throw new Error(`[talk-pi] Unable to resolve Piper extension path: ${details}`);
   }
 
   if (!exists(binary) || !exists(model) || !exists(modelJson)) {
     if (process.platform !== "win32") {
-      throw new Error("Piper missing. Put `tools/piper` in package or set TALK_PI_TOOLS_DIR.");
+      throw new Error("Piper missing. Put it in the extension folder or set TALK_PI_TOOLS_DIR.");
     }
 
     notify(options, "Talk-pi: Downloading 📥 Piper", "info");
