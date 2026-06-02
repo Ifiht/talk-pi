@@ -8,6 +8,7 @@ Talk-Pi is Pi extension for local voice capture, Whisper transcription, and Pipe
 - push-to-talk records audio and sends it to Whisper
 - replies are spoken with Piper
 - voice model and output language can be selected between English and Portuguese
+- Voice Language and mute state are saved and restored on the next open
 - downloads show `Talk-pi: Downloading 📥`
 
 ## Install

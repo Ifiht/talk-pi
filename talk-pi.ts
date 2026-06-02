@@ -13,6 +13,7 @@ import { resolvePiperRuntimeConfig, resolvePiperVoiceSelection, setPiperOutputKi
 import { transcribeAudioFile } from "./src/voice/offline-whisper.ts";
 import { createVoiceCaptureSession } from "./src/voice/voice-capture.ts";
 import { loadTalkPiConfig } from "./src/config.ts";
+import { loadVoiceSettingsStartupState, persistVoiceSettingsMute } from "./src/voice-settings.ts";
 import { ensurePiperTool } from "./src/tools-bootstrap.ts";
 
 type ExtensionContext = {
@@ -52,7 +53,7 @@ export default function (pi: ExtensionAPI) {
   let activeCtx: ExtensionContext | undefined;
   const config = loadTalkPiConfig();
   const shortcutConfig = config.shortcuts;
-  const muteState = createMuteState();
+  let muteState = createMuteState();
   let piperSelection: PiperPreferenceResolution | undefined;
 
   const voiceSession = createVoiceCaptureSession(
@@ -124,13 +125,16 @@ export default function (pi: ExtensionAPI) {
     } else {
       muteState.unmute();
     }
+    await persistVoiceSettingsMute(muted);
     await playbackQueue.setMuted(muted);
     syncStatus(ctx);
   };
 
   pi.on("session_start", async (_event, ctx) => {
     activeCtx = ctx;
-    piperSelection = await resolvePiperVoiceSelection();
+    const startupState = await loadVoiceSettingsStartupState();
+    piperSelection = startupState.selection;
+    muteState = startupState.muteState;
     await playbackQueue.setMuted(muteState.isMuted());
     syncStatus(ctx);
 

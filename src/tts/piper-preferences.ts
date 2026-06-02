@@ -16,6 +16,7 @@ export type PiperOutputKind = "default" | "english";
 export type PiperVoicePreference = {
   selectedModelId?: string;
   selectedOutputKind: PiperOutputKind;
+  muted: boolean;
   updatedAt: string;
 };
 
@@ -32,6 +33,7 @@ export type PiperPreferenceResolution = {
   whisperLanguage: "pt" | "en";
   modelPath: string;
   outputLabel: string;
+  muted: boolean;
 };
 
 export type PiperRuntimeConfig = {
@@ -43,6 +45,7 @@ export type PiperRuntimeConfig = {
 
 const DEFAULT_PREFERENCE: PiperVoicePreference = {
   selectedOutputKind: "default",
+  muted: false,
   updatedAt: new Date(0).toISOString(),
 };
 
@@ -128,6 +131,7 @@ export async function loadPiperVoicePreference(options: PiperPreferenceOptions =
     return {
       selectedModelId: typeof parsed.selectedModelId === "string" ? parsed.selectedModelId : undefined,
       selectedOutputKind: parsed.selectedOutputKind === "english" ? "english" : "default",
+      muted: typeof parsed.muted === "boolean" ? parsed.muted : false,
       updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : new Date(0).toISOString(),
     };
   } catch {
@@ -141,6 +145,7 @@ export async function savePiperVoicePreference(preference: Partial<PiperVoicePre
   const next: PiperVoicePreference = {
     selectedModelId: typeof preference.selectedModelId === "string" ? preference.selectedModelId : undefined,
     selectedOutputKind: preference.selectedOutputKind === "english" ? "english" : "default",
+    muted: typeof preference.muted === "boolean" ? preference.muted : false,
     updatedAt: new Date().toISOString(),
   };
 
@@ -163,7 +168,7 @@ function selectedModel(models: PiperModel[], preference: PiperVoicePreference, c
     const current = models.find((model) => model.id === normalizedCurrent || model.path === currentModelPath);
     if (current) return current;
   }
-  return models[0];
+  return models.find((model) => model.language !== "english") ?? models[0];
 }
 
 export async function resolvePiperVoiceSelection(options: PiperPreferenceOptions = {}): Promise<PiperPreferenceResolution> {
@@ -180,6 +185,7 @@ export async function resolvePiperVoiceSelection(options: PiperPreferenceOptions
   const outputLabel = activeOutputKind === "english"
     ? `English - ${activeModel ? friendlyModelLabel(activeModel.path) : "unknown"}`
     : `Portuguese - ${activeModel ? friendlyModelLabel(activeModel.path) : "Faber"}`;
+  const muted = preference.muted;
 
   if (activeOutputKind === "english" && !english) {
     return {
@@ -190,6 +196,7 @@ export async function resolvePiperVoiceSelection(options: PiperPreferenceOptions
       modelPath: baseModel?.path ?? currentModelPath ?? resolveToolPath(["piper", "models", "pt_BR-faber-medium.onnx"], { env }),
       whisperLanguage,
       outputLabel,
+      muted,
     };
   }
 
@@ -201,6 +208,7 @@ export async function resolvePiperVoiceSelection(options: PiperPreferenceOptions
     modelPath: activeModel?.path ?? currentModelPath ?? resolveToolPath(["piper", "models", "pt_BR-faber-medium.onnx"], { env }),
     whisperLanguage,
     outputLabel,
+    muted,
   };
 }
 
@@ -212,6 +220,11 @@ export async function setPiperVoiceModel(modelId: string, options: PiperPreferen
 export async function setPiperOutputKind(kind: PiperOutputKind, options: PiperPreferenceOptions = {}): Promise<PiperVoicePreference> {
   const current = await loadPiperVoicePreference(options);
   return savePiperVoicePreference({ ...current, selectedOutputKind: kind }, options);
+}
+
+export async function setPiperMuted(muted: boolean, options: PiperPreferenceOptions = {}): Promise<PiperVoicePreference> {
+  const current = await loadPiperVoicePreference(options);
+  return savePiperVoicePreference({ ...current, muted }, options);
 }
 
 export async function resolvePiperRuntimeConfig(
