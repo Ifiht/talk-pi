@@ -4,31 +4,31 @@ import { formatFooterStatusFromState } from "../../src/ui/footer-status.ts";
 async function run() {
   assert.equal(
     formatFooterStatusFromState({ voiceStatus: "idle", muted: false, playing: false }),
-    "| Talk-Pi: Ready 🟢",
+    "| Talk-Pi: Ready ",
   );
   assert.equal(
     formatFooterStatusFromState({ voiceStatus: "recording" }),
-    "| Talk-Pi: Listen 🎤",
+    "| Talk-Pi: Listen ",
   );
   assert.equal(
     formatFooterStatusFromState({ voiceStatus: "transcribing", speechStatus: "Spoken reply ready to play: reply.wav" }),
-    "| Talk-Pi: Transcribing ⏳",
+    "| Talk-Pi: Transcribing ",
   );
   assert.equal(
     formatFooterStatusFromState({ speechStatus: "Spoken reply playing: reply.wav", playing: true }),
-    "| Talk-Pi: Talking 🗣️",
+    "| Talk-Pi: Talking ",
   );
   assert.equal(
     formatFooterStatusFromState({ muted: true }),
-    "| Talk-Pi: Muted 🔇",
+    "| Talk-Pi: Muted ",
   );
   assert.equal(
     formatFooterStatusFromState({ voiceStatus: "error" }),
-    "| Talk-Pi: Error ⚠️",
+    "| Talk-Pi: Error ",
   );
   assert.equal(
     formatFooterStatusFromState({ voiceMessage: "No speech detected" }),
-    "| Talk-Pi: No speech detected 👂",
+    "| Talk-Pi: No speech detected ",
   );
 
   const narrow = formatFooterStatusFromState({ voiceMessage: "No speech detected" });

@@ -22,7 +22,7 @@ type FooterStatusMeta = {
 };
 
 const STATUS_META: Record<FooterStatusKind, FooterStatusMeta> = {
-  ready: { label: "Ready", emoji: "🟢" },
+  ready: { label: "Ready", emoji: "✔" },
   listen: { label: "Listen", emoji: "🎤" },
   transcribing: { label: "Transcribing", emoji: "⏳" },
   thinking: { label: "Thinking", emoji: "🤔" },
@@ -83,7 +83,7 @@ export function resolveFooterStatus(state: FooterStatusState): FooterStatusKind 
 
 export function formatFooterStatus(kind: FooterStatusKind, detail?: string): string {
   const meta = STATUS_META[kind];
-  return `| Talk-Pi: ${meta.label} ${meta.emoji}${detail ? ` — ${detail}` : ""}`;
+  return `| Talk-Pi: ${meta.label} ${detail ? ` — ${detail}` : ""}`;
 }
 
 export function formatFooterStatusFromState(state: FooterStatusState, detail?: string): string {
