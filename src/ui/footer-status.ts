@@ -83,7 +83,7 @@ export function resolveFooterStatus(state: FooterStatusState): FooterStatusKind 
 
 export function formatFooterStatus(kind: FooterStatusKind, detail?: string): string {
   const meta = STATUS_META[kind];
-  return `| Talk-Pi: ${meta.label} ${meta.emoji}${detail ? ` — ${detail}` : ""} |`;
+  return `| Talk-Pi: ${meta.label} ${meta.emoji}${detail ? ` — ${detail}` : ""}`;
 }
 
 export function formatFooterStatusFromState(state: FooterStatusState, detail?: string): string {
