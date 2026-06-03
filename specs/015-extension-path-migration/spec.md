@@ -6,13 +6,13 @@
 
 **Status**: Draft
 
-**Input**: User description: "The adequate folder for extensions in .pi is in /.pi/agent/extension. Is it possible to change all the codes that is using /.pi/tools to /.pi/agent/extension/talk-pi folder?"
+**Input**: User description: "The adequate folder for extensions in .pi is in /.pi/agent/extensions. Is it possible to change all the codes that is using /.pi/tools to /.pi/agent/extensions/talk-pi folder?"
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Use the new extension path (Priority: P1)
 
-As a maintainer, I want the extension to resolve its files from `/.pi/agent/extension/talk-pi` so the project works with the current Pi extension layout.
+As a maintainer, I want the extension to resolve its files from `/.pi/agent/extensions/talk-pi` so the project works with the current Pi extension layout.
 
 **Why this priority**: This is the core change the request asks for, and it unblocks the extension from using the correct folder.
 
@@ -20,7 +20,7 @@ As a maintainer, I want the extension to resolve its files from `/.pi/agent/exte
 
 **Acceptance Scenarios**:
 
-1. **Given** a fresh setup with only `/.pi/agent/extension/talk-pi` available, **When** the extension starts, **Then** it loads its required files from the new path.
+1. **Given** a fresh setup with only `/.pi/agent/extensions/talk-pi` available, **When** the extension starts, **Then** it loads its required files from the new path.
 2. **Given** a user changes an extension setting or file, **When** the extension saves it, **Then** the change is stored under the new path.
 
 ---
@@ -50,7 +50,7 @@ As a maintainer, I want repository references, examples, and tests to point to t
 
 **Acceptance Scenarios**:
 
-1. **Given** the repository is scanned for extension path references, **When** the active code is reviewed, **Then** it points to `/.pi/agent/extension/talk-pi` instead of `/.pi/tools`.
+1. **Given** the repository is scanned for extension path references, **When** the active code is reviewed, **Then** it points to `/.pi/agent/extensions/talk-pi` instead of `/.pi/tools`.
 2. **Given** documentation or tests mention the extension location, **When** they are reviewed, **Then** they match the new folder naming.
 
 ### Edge Cases
@@ -65,10 +65,10 @@ As a maintainer, I want repository references, examples, and tests to point to t
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST resolve extension-related file access to `/.pi/agent/extension/talk-pi` as the primary location.
+- **FR-001**: The system MUST resolve extension-related file access to `/.pi/agent/extensions/talk-pi` as the primary location.
 - **FR-002**: The system MUST stop using `/.pi/tools` as the default location for extension assets and settings.
 - **FR-003**: The system MUST continue to open and operate when `/.pi/tools` is absent.
-- **FR-004**: The system MUST prefer `/.pi/agent/extension/talk-pi` when both the new and legacy locations are available.
+- **FR-004**: The system MUST prefer `/.pi/agent/extensions/talk-pi` when both the new and legacy locations are available.
 - **FR-005**: The repository MUST update active references, examples, and tests so they describe the same extension location.
 - **FR-006**: The extension MUST preserve its existing user-visible behavior apart from the folder location used for extension files.
 
@@ -76,7 +76,7 @@ As a maintainer, I want repository references, examples, and tests to point to t
 
 ### Measurable Outcomes
 
-- **SC-001**: In validated startup tests, the extension loads successfully from `/.pi/agent/extension/talk-pi` in 100% of supported environment scenarios.
+- **SC-001**: In validated startup tests, the extension loads successfully from `/.pi/agent/extensions/talk-pi` in 100% of supported environment scenarios.
 - **SC-002**: In compatibility tests, existing setups continue to open and complete the primary extension workflow with zero blocked launches.
 - **SC-003**: After the change, no standard user action requires manual creation of `/.pi/tools` to use the extension.
 - **SC-004**: Repository checks confirm that active path references for the extension consistently point to the new location.

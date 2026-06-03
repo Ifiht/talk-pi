@@ -10,7 +10,7 @@
 
 **Purpose**: Prepare shared test fixtures for the new extension-root layout.
 
-- [x] T001 [P] Update `tests/unit/tools-test-utils.ts` to generate fixtures rooted at `/.pi/agent/extension/talk-pi` for shared path tests
+- [x] T001 [P] Update `tests/unit/tools-test-utils.ts` to generate fixtures rooted at `/.pi/agent/extensions/talk-pi` for shared path tests
 - [x] T002 [P] Update `tests/integration/voice-settings-test-utils.ts` to use the same new extension-root fixture conventions
 
 ---
@@ -21,10 +21,10 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [x] T003 [P] Add failing regression coverage in `tests/unit/tools-root-preference.test.ts` for preferring `/.pi/agent/extension/talk-pi` when a user-scoped `.pi` folder exists
+- [x] T003 [P] Add failing regression coverage in `tests/unit/tools-root-preference.test.ts` for preferring `/.pi/agent/extensions/talk-pi` when a user-scoped `.pi` folder exists
 - [x] T004 [P] Add failing regression coverage in `tests/unit/tools-root-creation.test.ts` for creating the new extension root when no user-scoped path exists
 - [x] T005 [P] Add failing regression coverage in `tests/unit/piper-config.test.ts` and `tests/unit/talk-pi-config.test.ts` for default binary and model paths under the new extension root
-- [x] T006 Refactor `src/tools.ts` to resolve `/.pi/agent/extension/talk-pi` as the user-scoped root and keep the local `./tools` fallback for fresh local installs
+- [x] T006 Refactor `src/tools.ts` to resolve `/.pi/agent/extensions/talk-pi` as the user-scoped root and keep the local `./tools` fallback for fresh local installs
 
 **Checkpoint**: The extension-root path is resolved through one shared code path and the test suite describes the new behavior.
 
@@ -32,9 +32,9 @@
 
 ## Phase 3: User Story 1 - Use the new extension path (Priority: P1) 🎯 MVP
 
-**Goal**: Make all runtime consumers load extension assets from `/.pi/agent/extension/talk-pi`.
+**Goal**: Make all runtime consumers load extension assets from `/.pi/agent/extensions/talk-pi`.
 
-**Independent Test**: Open the extension with a user-scoped `.pi` folder and verify Piper, Whisper, and config paths resolve from `/.pi/agent/extension/talk-pi`.
+**Independent Test**: Open the extension with a user-scoped `.pi` folder and verify Piper, Whisper, and config paths resolve from `/.pi/agent/extensions/talk-pi`.
 
 ### Implementation for User Story 1
 
@@ -70,7 +70,7 @@
 
 ### Implementation for User Story 3
 
-- [x] T013 [P] [US3] Update `README.md` to document `/.pi/agent/extension/talk-pi` instead of `/.pi/tools`
+- [x] T013 [P] [US3] Update `README.md` to document `/.pi/agent/extensions/talk-pi` instead of `/.pi/tools`
 - [x] T014 [P] [US3] Update `specs/015-extension-path-migration/quickstart.md` to match the new path and verification steps
 - [x] T015 [P] [US3] Replace remaining `/.pi/tools` references in `src/voice/offline-whisper.ts`, `tests/unit/piper-preferences.test.ts`, `tests/unit/talk-pi-config.test.ts`, and `tests/integration/voice-settings-test-utils.ts` with the new extension-root wording or helper usage
 

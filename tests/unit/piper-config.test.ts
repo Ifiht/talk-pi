@@ -30,7 +30,7 @@ function run(): void {
   assert.equal(defaults.binaryPath, path.join(process.cwd(), "tools", "piper", process.platform === "win32" ? "piper.exe" : "piper"));
   assert.equal(defaults.modelPath, "/opt/piper/voices/voice.onnx");
   assert.equal(defaults.outputDir, defaultTemporaryWavRoot());
-  assert.equal(defaults.outputDir.startsWith(os.tmpdir()), true);
+  assert.equal(defaults.outputDir, path.join(os.homedir(), ".pi", "agent", "extensions", "talk-pi", "tts"));
 
   const toolsDir = fs.mkdtempSync(path.join(os.tmpdir(), "talk-pi-tools-"));
   const fallback = resolvePiperConfig({ env: { ...localFixture.env, TALK_PI_TOOLS_DIR: toolsDir } as NodeJS.ProcessEnv });

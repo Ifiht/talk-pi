@@ -5,7 +5,7 @@
 ### Extension Root
 - **Purpose**: The active filesystem location the extension uses to load and store its files.
 - **Key attributes**:
-  - `currentPath`: `/.pi/agent/extension/talk-pi`
+  - `currentPath`: `/.pi/agent/extensions/talk-pi`
   - `isAvailable`: whether the directory can be accessed when the extension starts
 - **Rules**:
   - The active root must resolve to the new extension location.

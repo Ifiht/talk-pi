@@ -39,6 +39,25 @@ async function run() {
   assert.equal(audio.subarray(0, 4).toString("utf8"), "RIFF");
   assert.equal(audio.subarray(8, 12).toString("utf8"), "WAVE");
   assert.equal(audio.subarray(audio.length - pcm.length).equals(pcm), true);
+
+  const homeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "talk-pi-home-"));
+  const previousHome = process.env.HOME;
+  const previousUserProfile = process.env.USERPROFILE;
+  process.env.HOME = homeRoot;
+  process.env.USERPROFILE = homeRoot;
+  try {
+    const defaultCapture = startMicCapture({
+      createCapture: () => ({
+        stream: () => Readable.from([pcm]),
+        stop: async () => undefined,
+      }),
+    });
+    assert.ok(defaultCapture.filePath.includes(path.join(".pi", "agent", "extensions", "talk-pi", "voice-recordings")));
+    await defaultCapture.stop();
+  } finally {
+    if (previousHome === undefined) delete process.env.HOME; else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE; else process.env.USERPROFILE = previousUserProfile;
+  }
 }
 
 run().catch((error) => {

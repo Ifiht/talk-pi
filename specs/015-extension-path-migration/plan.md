@@ -6,7 +6,7 @@
 
 ## Summary
 
-Update the extension's file-path references so active code, examples, tests, and documentation use `/.pi/agent/extension/talk-pi` instead of `/.pi/tools`, while keeping behavior consistent for existing users during the transition.
+Update the extension's file-path references so active code, examples, tests, and documentation use `/.pi/agent/extensions/talk-pi` instead of `/.pi/tools`, while keeping behavior consistent for existing users during the transition.
 
 ## Technical Context
 

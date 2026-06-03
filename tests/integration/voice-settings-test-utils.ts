@@ -5,7 +5,7 @@ import { executableName } from "../../src/tools.ts";
 
 export function createTalkPiVoiceFixture(prefix: string) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
-  const toolsDir = path.join(root, ".pi", "agent", "extension", "talk-pi");
+  const toolsDir = path.join(root, ".pi", "agent", "extensions", "talk-pi");
   const piperDir = path.join(toolsDir, "piper");
   const modelsDir = path.join(piperDir, "models");
   const prefsPath = path.join(root, "prefs.json");

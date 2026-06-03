@@ -19,7 +19,7 @@ type MicCaptureDeps = {
 };
 
 function captureDir(): string {
-  return path.join(os.homedir(), ".pi", "voice-recordings");
+  return path.join(os.homedir(), ".pi", "agent", "extensions", "talk-pi", "voice-recordings");
 }
 
 function wavHeader(dataLength: number, sampleRate = 16000, channels = 1, bitsPerSample = 16): Buffer {

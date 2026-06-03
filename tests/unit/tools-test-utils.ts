@@ -31,7 +31,7 @@ export function createToolPathFixture(options: ToolPathFixtureOptions = {}): Too
   const homeDir = path.join(root, "home");
   const cwd = path.join(root, "install");
   const piDir = path.join(homeDir, ".pi");
-  const homeToolsDir = path.join(piDir, "agent", "extension", "talk-pi");
+  const homeToolsDir = path.join(piDir, "agent", "extensions", "talk-pi");
   const localToolsDir = path.join(cwd, "tools");
 
   fs.mkdirSync(homeDir, { recursive: true });

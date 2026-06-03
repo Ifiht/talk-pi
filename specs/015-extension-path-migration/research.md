@@ -1,7 +1,7 @@
 # Research: Extension Path Migration
 
 ## Decision 1: Standardize on the new extension root
-- **Decision**: Use `/.pi/agent/extension/talk-pi` as the active extension location everywhere the project resolves extension files.
+- **Decision**: Use `/.pi/agent/extensions/talk-pi` as the active extension location everywhere the project resolves extension files.
 - **Rationale**: This matches the current Pi extension layout described by the user and removes reliance on the outdated tools directory.
 - **Alternatives considered**:
   - Keep `/.pi/tools` as the default: rejected because it preserves the old layout.

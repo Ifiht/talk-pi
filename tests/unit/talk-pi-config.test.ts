@@ -41,6 +41,7 @@ function run(): void {
 
   assert.equal(defaults.piper.binaryPath, path.join(toolsDir, "piper", process.platform === "win32" ? "piper.exe" : "piper"));
   assert.equal(defaults.piper.outputDir, defaultTemporaryWavRoot());
+  assert.equal(defaults.piper.outputDir, path.join(os.homedir(), ".pi", "agent", "extensions", "talk-pi", "tts"));
   assert.equal(defaults.piper.modelPath, "/opt/piper/voices/voice.onnx");
   assert.equal(
     defaults.whisper.modelPath,

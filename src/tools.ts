@@ -49,7 +49,7 @@ function resolveUserToolsRoot(env: NodeJS.ProcessEnv): string {
     throw new Error(`[talk-pi] Unable to access user configuration root at ${piRoot}: ${details}`);
   }
 
-  return prepareToolDirectory(path.join(piRoot, "agent", "extension", "talk-pi"), "user extension folder");
+  return prepareToolDirectory(path.join(piRoot, "agent", "extensions", "talk-pi"), "user extension folder");
 }
 
 function resolveLocalToolsRoot(cwd: string): string {
