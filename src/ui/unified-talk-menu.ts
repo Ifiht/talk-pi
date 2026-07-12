@@ -11,13 +11,12 @@ export type UnifiedTalkMenuState = {
   isMuted(): boolean;
   setMuted(nextMuted: boolean): Promise<void> | void;
   getStatusText(): string;
-  chooseVoiceLanguage(): Promise<void> | void;
 };
 
 export async function openUnifiedTalkMenu(ctx: UnifiedTalkMenuContext, state: UnifiedTalkMenuState): Promise<void> {
   while (true) {
     const isMuted = state.isMuted();
-    const title = `Talk-pi menu (${isMuted ? "Muted" : "Unmuted"})`;
+    const title = `Pi-listener menu (${isMuted ? "Muted" : "Unmuted"})`;
     const options = buildUnifiedMenuOptions(isMuted);
     const choice = await ctx.ui.select(title, options, { overlay: true });
     const action = parseUnifiedMenuAction(choice, isMuted);
@@ -28,11 +27,6 @@ export async function openUnifiedTalkMenu(ctx: UnifiedTalkMenuContext, state: Un
 
     if (action === "status") {
       ctx.ui.notify(`Status: ${state.getStatusText()}`, "info");
-      continue;
-    }
-
-    if (action === "voice-language") {
-      await state.chooseVoiceLanguage();
       continue;
     }
 

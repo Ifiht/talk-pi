@@ -1,5 +1,44 @@
 # PLAN: Hands-Free Voice Loop for Pi
 
+## PROGRESS (resume point)
+
+### Done — Phase 1 (verified working by user)
+- `native/listener/pi-listener.cpp` — wake-word listener, JSON stdout (`ready`/`wake_only`/`command`), stdin PAUSE/RESUME, EOF exit, follow-up window (`--follow-ms`, default 8s), SDL chime (`--chime`), `--wake` required
+- `native/listener/CMakeLists.txt` + `build.sh` — builds against untouched submodule
+- User verified: wake detection, follow-up command, chime, Ctrl-D exit. NOT yet verified: PAUSE/RESUME protocol
+
+### Done — Phase 2 (written, NOT yet run/verified)
+- `src/listener/listener-process.ts` — spawn/supervise, JSON parse, pause/resume, crash restart w/ backoff
+- `src/listener/whisper-model.ts` — model download (base.en), extracted from offline-whisper
+- `pi-listener.ts` — new entry: `/listen` toggle, half-duplex (pause on send → resume on playback-queue idle), `/pi-listener` menu, loads `.env` via `process.loadEnvFile`
+- `src/config.ts` — rewritten: `PI_LISTENER_*` vars, listener config, no shortcuts
+- `src/tts/playback-queue.ts` — added `onIdle` callback
+- `src/ui/menu-actions.ts` + `unified-talk-menu.ts` — dropped voice-language
+- `package.json` — renamed pi-listener v2.0.0, dropped decibri + whisper-cpp-node
+- Env renames done in: `tools.ts` (also removed unused `hasRequiredTools`), `temp-wav.ts`, `piper-client.ts`, `wav-player.ts`, `piper-preferences.ts`, `tools-bootstrap.ts` (also base.en + Pi-listener messages)
+- `.env.example` — rewritten with `PI_LISTENER_*`, placeholder wake word
+- Tests updated (chooseVoiceLanguage removed): `tests/unit/unified-talk-menu.test.ts`, `tests/integration/{voice-settings-restore,voice-settings-recovery,voice-settings-defaults,unified-talk-menu-open}.test.ts`
+
+### TODO (next session)
+1. Check `tests/unit/voice-settings-test-utils.ts` + remaining kept tests for `TALK_PI_*` env names → rename to `PI_LISTENER_*` (grep `TALK_PI_` to find leftovers)
+2. Update `tests/unit/tools*.test.ts` expectations: extension dir is now `.pi/agent/extensions/pi-listener`, env `PI_LISTENER_TOOLS_DIR`
+3. Add unit test for `listener-process.ts` (fake child script echoing canned JSON: parse, pause/resume writes, crash restart)
+4. `src/ui/footer-status.ts` — still references old voice statuses; works but could be trimmed (low priority; pi-listener.ts uses its own footerText)
+5. README rewrite for pi-listener
+6. `npm install` (decibri/whisper-cpp-node removed), then run kept tests; typecheck (`npx tsc --noEmit` — current lint noise is @types/node not resolving, likely missing node_modules)
+7. End-to-end: copy `.env.example` → `.env`, set real wake word, `/listen`, full loop test
+8. `whisperLanguage` in `piper-preferences.ts` still returns "pt" for non-english models — harmless (unused by listener) but revisit for English-only v1
+
+### Done this session
+- **TODO #1 completed**: deleted dead files:
+  `talk-pi.ts`, `src/input/`, `src/voice/`, `src/recording/`, `src/state/`, `src/ui/recording_status.ts`,
+  plus 15 dead push-to-talk test files (kept: recording-gate, esc-*, piper-*, mute-*, spoken-*, temp-wav-*, tools-*, footer-status, playback-queue-* tests)
+
+### Notes
+- Nothing loads `.env` for tests; entry loads it at import. Wake word required: extension errors on `/listen` if `PI_LISTENER_ACTIVATION_NAME` unset
+- Listener binary default path: `<pkg>/native/listener/build/pi-listener`; chime default `<pkg>/sound/QuestLog.wav` (user's file, ~200KB — trim if follow-up feels sluggish)
+- `message_end` handler: if muted, resumes listening immediately instead of enqueueing TTS
+
 ## Goal
 
 Replace talk-pi's push-to-talk with a fully hands-free loop:

@@ -27,7 +27,6 @@ async function run() {
       muted = nextMuted;
     },
     getStatusText: () => muted ? "Muted | F9 sends directly | F10 inserts into editor" : "Ready | F9 sends directly | F10 inserts into editor",
-    chooseVoiceLanguage: async () => undefined,
   });
 
   assert.ok(titles[0]?.includes("Unmuted"));

@@ -59,7 +59,7 @@ function piperLessacModelJsonPath(options: ToolBootstrapOptions): string {
 }
 
 function whisperModelPath(options: ToolBootstrapOptions): string {
-  return path.join(toolRoot(options), "whisper", "models", "ggml-base.bin");
+  return path.join(toolRoot(options), "whisper", "models", "ggml-base.en.bin");
 }
 
 function exists(filePath: string): boolean {
@@ -151,7 +151,7 @@ async function copyTree(source: string, destination: string): Promise<void> {
 }
 
 async function bootstrapWindowsZip(url: string, targetDir: string): Promise<void> {
-  const tempRoot = await fsp.mkdtemp(path.join(os.tmpdir(), "talk-pi-tools-"));
+  const tempRoot = await fsp.mkdtemp(path.join(os.tmpdir(), "pi-listener-tools-"));
   const zipPath = path.join(tempRoot, "archive.zip");
   const extractDir = path.join(tempRoot, "extract");
   try {
@@ -179,18 +179,18 @@ export async function ensurePiperTool(options: ToolBootstrapOptions = {}): Promi
     ryanJson = piperRyanModelJsonPath(options);
   } catch (error) {
     const details = error instanceof Error ? error.message : String(error);
-    throw new Error(`[talk-pi] Unable to resolve Piper extension path: ${details}`);
+    throw new Error(`[pi-listener] Unable to resolve Piper extension path: ${details}`);
   }
 
   if (!exists(binary) || !exists(model) || !exists(modelJson)) {
     if (process.platform !== "win32") {
-      throw new Error("Piper missing. Put it in the extension folder or set TALK_PI_TOOLS_DIR.");
+      throw new Error("Piper missing. Put it in the extension folder or set PI_LISTENER_TOOLS_DIR.");
     }
 
-    notify(options, "Talk-pi: Downloading 📥 Piper", "info");
+    notify(options, "Pi-listener: Downloading 📥 Piper", "info");
     await bootstrapWindowsZip(PIPER_WINDOWS_ZIP, path.join(toolRoot(options), "piper"));
     if (!exists(model) || !exists(modelJson)) {
-      notify(options, "Talk-pi: Downloading 📥 Piper voice model", "info");
+      notify(options, "Pi-listener: Downloading 📥 Piper voice model", "info");
       await ensureDir(path.dirname(model));
       await downloadFile(PIPER_VOICE_MODEL, model);
       await downloadFile(PIPER_VOICE_MODEL_JSON, modelJson);
@@ -198,7 +198,7 @@ export async function ensurePiperTool(options: ToolBootstrapOptions = {}): Promi
   }
 
   if (!exists(ryan) || !exists(ryanJson)) {
-    notify(options, "Talk-pi: Downloading 📥 Piper English voice (Ryan)", "info");
+    notify(options, "Pi-listener: Downloading 📥 Piper English voice (Ryan)", "info");
     await ensureDir(path.dirname(ryan));
     await downloadFile(PIPER_RYAN_VOICE_MODEL, ryan);
     await downloadFile(PIPER_RYAN_VOICE_MODEL_JSON, ryanJson);
@@ -207,7 +207,7 @@ export async function ensurePiperTool(options: ToolBootstrapOptions = {}): Promi
   const lessac = piperLessacModelPath(options);
   const lessacJson = piperLessacModelJsonPath(options);
   if (!exists(lessac) || !exists(lessacJson)) {
-    notify(options, "Talk-pi: Downloading 📥 Piper English voice (Lessac)", "info");
+    notify(options, "Pi-listener: Downloading 📥 Piper English voice (Lessac)", "info");
     await ensureDir(path.dirname(lessac));
     await downloadFile(PIPER_LESSAC_VOICE_MODEL, lessac);
     await downloadFile(PIPER_LESSAC_VOICE_MODEL_JSON, lessacJson);
@@ -223,13 +223,13 @@ export async function ensureWhisperToolModel(options: ToolBootstrapOptions = {})
     model = whisperModelPath(options);
   } catch (error) {
     const details = error instanceof Error ? error.message : String(error);
-    throw new Error(`[talk-pi] Unable to resolve Whisper model path: ${details}`);
+    throw new Error(`[pi-listener] Unable to resolve Whisper model path: ${details}`);
   }
 
   if (exists(model)) return model;
 
-  notify(options, "Talk-pi: Downloading 📥 Whisper model", "info");
+  notify(options, "Pi-listener: Downloading 📥 Whisper model", "info");
   await ensureDir(path.dirname(model));
-  await downloadFile("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin", model);
+  await downloadFile("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin", model);
   return model;
 }

@@ -50,11 +50,11 @@ const DEFAULT_PREFERENCE: PiperVoicePreference = {
 };
 
 function piperToolsDir(env: NodeJS.ProcessEnv): string {
-  return env.TALK_PI_PIPER_MODELS_DIR?.trim() || resolveToolPath(["piper"], { env });
+  return env.PI_LISTENER_PIPER_MODELS_DIR?.trim() || resolveToolPath(["piper"], { env });
 }
 
 function preferenceFilePath(env: NodeJS.ProcessEnv): string {
-  return env.TALK_PI_PIPER_PREFERENCES_PATH?.trim() || path.join(os.homedir(), ".pi", "tts", "piper-preferences.json");
+  return env.PI_LISTENER_PIPER_PREFERENCES_PATH?.trim() || path.join(os.homedir(), ".pi", "tts", "piper-preferences.json");
 }
 
 function normalizeModelId(modelPath: string): string {
@@ -175,7 +175,7 @@ export async function resolvePiperVoiceSelection(options: PiperPreferenceOptions
   const env = options.env ?? process.env;
   const models = await discoverPiperModels(options);
   const preference = await loadPiperVoicePreference(options);
-  const currentModelPath = options.modelPath?.trim() || env.TALK_PI_PIPER_MODEL_PATH?.trim();
+  const currentModelPath = options.modelPath?.trim() || env.PI_LISTENER_PIPER_MODEL_PATH?.trim();
   const baseModel = selectedModel(models, preference, currentModelPath);
   const english = englishModel(models);
   const activeOutputKind = preference.selectedOutputKind === "english" ? "english" : "default";

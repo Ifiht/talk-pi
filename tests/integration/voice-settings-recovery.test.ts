@@ -36,7 +36,6 @@ async function run() {
       }
     },
     getStatusText: () => `Voice Language: ${startup.selection.outputLabel} | Muted: ${startup.muteState.isMuted() ? "yes" : "no"}`,
-    chooseVoiceLanguage: async () => undefined,
   });
 
   assert.ok(titles[0]?.includes("Unmuted"));

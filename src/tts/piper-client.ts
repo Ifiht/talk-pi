@@ -66,7 +66,7 @@ async function resolvePiperBinaryPath(candidate: string): Promise<string> {
   }
 
   throw new Error(
-    `Piper binary not found: ${resolved}. Put it in the extension folder or set TALK_PI_PIPER_BIN.`,
+    `Piper binary not found: ${resolved}. Put it in the extension folder or set PI_LISTENER_PIPER_BIN.`,
   );
 }
 

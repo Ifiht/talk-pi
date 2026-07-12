@@ -30,14 +30,14 @@ function prepareToolDirectory(dirPath: string, label: string): string {
     return dirPath;
   } catch (error) {
     const details = error instanceof Error ? error.message : String(error);
-    throw new Error(`[talk-pi] Unable to prepare ${label} at ${dirPath}: ${details}`);
+    throw new Error(`[pi-listener] Unable to prepare ${label} at ${dirPath}: ${details}`);
   }
 }
 
 function resolveUserToolsRoot(env: NodeJS.ProcessEnv): string {
   const piRoot = userPiRoot(env);
   if (!fs.existsSync(piRoot)) {
-    throw new Error(`[talk-pi] Expected user configuration root to exist at ${piRoot}`);
+    throw new Error(`[pi-listener] Expected user configuration root to exist at ${piRoot}`);
   }
 
   try {
@@ -46,22 +46,14 @@ function resolveUserToolsRoot(env: NodeJS.ProcessEnv): string {
     }
   } catch (error) {
     const details = error instanceof Error ? error.message : String(error);
-    throw new Error(`[talk-pi] Unable to access user configuration root at ${piRoot}: ${details}`);
+    throw new Error(`[pi-listener] Unable to access user configuration root at ${piRoot}: ${details}`);
   }
 
-  return prepareToolDirectory(path.join(piRoot, "agent", "extensions", "talk-pi"), "user extension folder");
+  return prepareToolDirectory(path.join(piRoot, "agent", "extensions", "pi-listener"), "user extension folder");
 }
 
 function resolveLocalToolsRoot(cwd: string): string {
   return prepareToolDirectory(path.join(cwd, "tools"), "local tools folder");
-}
-
-function hasRequiredTools(toolsRoot: string): boolean {
-  return [
-    path.join(toolsRoot, "piper", executableName("piper")),
-    path.join(toolsRoot, "sox", executableName("sox")),
-    path.join(toolsRoot, "whisper", "models", "ggml-base.bin"),
-  ].every((candidate) => fs.existsSync(candidate));
 }
 
 export function resolveToolsRoot(options: ToolPathOptions = {}): string {
@@ -73,7 +65,7 @@ export function resolveToolsRoot(options: ToolPathOptions = {}): string {
     return resolveUserToolsRoot(env);
   }
 
-  const explicit = normalizedPath(env.TALK_PI_TOOLS_DIR);
+  const explicit = normalizedPath(env.PI_LISTENER_TOOLS_DIR);
   if (explicit) return explicit;
 
   return resolveLocalToolsRoot(cwdRoot);

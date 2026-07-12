@@ -29,5 +29,5 @@ export async function createTemporaryWavFile(baseDir = defaultTemporaryWavRoot()
 }
 
 export function defaultTemporaryWavRoot(): string {
-  return process.env.TALK_PI_TTS_OUTPUT_DIR?.trim() || path.join(os.homedir(), ".pi", "agent", "extensions", "talk-pi", "tts");
+  return process.env.PI_LISTENER_TTS_OUTPUT_DIR?.trim() || path.join(os.homedir(), ".pi", "agent", "extensions", "pi-listener", "tts");
 }

@@ -16,6 +16,7 @@ export type PlaybackQueueOptions = {
   isRecordingBlocked?: () => boolean;
   onNotify?: (message: string, level: "info" | "warning" | "error") => void;
   onStatus?: (message: string) => void;
+  onIdle?: () => void;
   piper?: PiperClientOptions | (() => PiperClientOptions | Promise<PiperClientOptions>);
 };
 
@@ -149,6 +150,8 @@ export function createPlaybackQueue(options: PlaybackQueueOptions = {}): Playbac
       stopping = false;
       if (shouldRestart) {
         void process();
+      } else if (queue.length === 0) {
+        options.onIdle?.();
       }
     }
   };

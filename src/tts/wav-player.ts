@@ -6,13 +6,13 @@ const defaultCreatePlayer = createRequire(import.meta.url)("play-sound") as (opt
 };
 
 function createWindowsWavProcess(filePath: string) {
-  const script = "$path = $env:TALK_PI_WAV_FILE; $player = New-Object System.Media.SoundPlayer $path; $player.PlaySync()";
+  const script = "$path = $env:PI_LISTENER_WAV_FILE; $player = New-Object System.Media.SoundPlayer $path; $player.PlaySync()";
   return spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], {
     stdio: ["ignore", "ignore", "pipe"],
     windowsHide: true,
     env: {
       ...process.env,
-      TALK_PI_WAV_FILE: filePath,
+      PI_LISTENER_WAV_FILE: filePath,
     },
   });
 }

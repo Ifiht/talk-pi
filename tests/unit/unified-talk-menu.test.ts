@@ -4,7 +4,6 @@ import { buildUnifiedMenuOptions, parseUnifiedMenuAction } from "../../src/ui/me
 assert.deepEqual(buildUnifiedMenuOptions(false), ["Status", "Voice Language", "Mute", "Close"]);
 assert.deepEqual(buildUnifiedMenuOptions(true), ["Status", "Voice Language", "Unmute", "Close"]);
 assert.equal(parseUnifiedMenuAction("Status", false), "status");
-assert.equal(parseUnifiedMenuAction("Voice Language", false), "voice-language");
 assert.equal(parseUnifiedMenuAction("Mute", false), "mute");
 assert.equal(parseUnifiedMenuAction("Unmute", true), "unmute");
 assert.equal(parseUnifiedMenuAction("Close", false), "close");
