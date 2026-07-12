@@ -16,9 +16,9 @@ async function run() {
 
   const prefPath = path.join(dir, "prefs.json");
   const env = {
-    TALK_PI_TOOLS_DIR: dir,
-    TALK_PI_PIPER_MODELS_DIR: modelsDir,
-    TALK_PI_PIPER_PREFERENCES_PATH: prefPath,
+    PI_LISTENER_TOOLS_DIR: dir,
+    PI_LISTENER_PIPER_MODELS_DIR: modelsDir,
+    PI_LISTENER_PIPER_PREFERENCES_PATH: prefPath,
   } as NodeJS.ProcessEnv;
 
   const models = await discoverPiperModels({ env });

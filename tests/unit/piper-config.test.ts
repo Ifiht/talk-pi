@@ -9,9 +9,9 @@ import { createToolPathFixture } from "./tools-test-utils.ts";
 function run(): void {
   const config = resolvePiperConfig({
     env: {
-      TALK_PI_PIPER_BIN: "  /opt/piper/bin/piper  ",
-      TALK_PI_PIPER_MODEL_PATH: "  /opt/piper/voices/voice.onnx  ",
-      TALK_PI_TTS_OUTPUT_DIR: "  /tmp/talk-pi-tts  ",
+      PI_LISTENER_PIPER_BIN: "  /opt/piper/bin/piper  ",
+      PI_LISTENER_PIPER_MODEL_PATH: "  /opt/piper/voices/voice.onnx  ",
+      PI_LISTENER_TTS_OUTPUT_DIR: "  /tmp/talk-pi-tts  ",
     } as NodeJS.ProcessEnv,
   });
 
@@ -23,24 +23,24 @@ function run(): void {
   const defaults = resolvePiperConfig({
     env: {
       ...localFixture.env,
-      TALK_PI_PIPER_MODEL_PATH: "/opt/piper/voices/voice.onnx",
+      PI_LISTENER_PIPER_MODEL_PATH: "/opt/piper/voices/voice.onnx",
     } as NodeJS.ProcessEnv,
   });
 
   assert.equal(defaults.binaryPath, path.join(process.cwd(), "tools", "piper", process.platform === "win32" ? "piper.exe" : "piper"));
   assert.equal(defaults.modelPath, "/opt/piper/voices/voice.onnx");
   assert.equal(defaults.outputDir, defaultTemporaryWavRoot());
-  assert.equal(defaults.outputDir, path.join(os.homedir(), ".pi", "agent", "extensions", "talk-pi", "tts"));
+  assert.equal(defaults.outputDir, path.join(os.homedir(), ".pi", "agent", "extensions", "pi-listener", "tts"));
 
   const toolsDir = fs.mkdtempSync(path.join(os.tmpdir(), "talk-pi-tools-"));
-  const fallback = resolvePiperConfig({ env: { ...localFixture.env, TALK_PI_TOOLS_DIR: toolsDir } as NodeJS.ProcessEnv });
+  const fallback = resolvePiperConfig({ env: { ...localFixture.env, PI_LISTENER_TOOLS_DIR: toolsDir } as NodeJS.ProcessEnv });
   assert.equal(
     fallback.binaryPath,
     path.join(toolsDir, "piper", process.platform === "win32" ? "piper.exe" : "piper"),
   );
   assert.equal(
     fallback.modelPath,
-    path.join(toolsDir, "piper", "models", "pt_BR-faber-medium.onnx"),
+    path.join(toolsDir, "piper", "models", "en_US-lessac-medium.onnx"),
   );
 
   const fixture = createToolPathFixture({ withHomePi: true });
@@ -51,7 +51,7 @@ function run(): void {
   );
   assert.equal(
     userDefaults.modelPath,
-    path.join(fixture.homeToolsDir, "piper", "models", "pt_BR-faber-medium.onnx"),
+    path.join(fixture.homeToolsDir, "piper", "models", "en_US-lessac-medium.onnx"),
   );
 }
 

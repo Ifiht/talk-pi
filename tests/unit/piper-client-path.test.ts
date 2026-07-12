@@ -7,33 +7,33 @@ import { synthesizeSpeechToWav } from "../../src/tts/piper-client.ts";
 
 async function run() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "talk-pi-path-"));
-  const install = path.join(dir, "piper");
-  fs.mkdirSync(install, { recursive: true });
-  const exe = path.join(install, process.platform === "win32" ? "piper.exe" : "piper");
-  fs.writeFileSync(exe, "fake");
 
-  const result = await synthesizeSpeechToWav("hello", {
-    modelPath: "voice.onnx",
-    outputDir: dir,
-    binaryPath: exe,
-    spawnImpl: ((command: string, args: string[]) => {
-      assert.equal(command, exe);
-      const child = new EventEmitter() as EventEmitter & { stdin: { end(text: string): void }; stderr: EventEmitter };
-      child.stderr = new EventEmitter();
-      child.stdin = {
-        end(text: string) {
-          const out = args[args.indexOf("--output_file") + 1];
-          fs.writeFileSync(out, text);
-          queueMicrotask(() => child.emit("close", 0));
-        },
-      };
-      return child as never;
-    }) as never,
-  });
+  // A missing binary surfaces as spawn ENOENT, remapped to an actionable error.
+  await assert.rejects(
+    synthesizeSpeechToWav("hello", {
+      modelPath: "voice.onnx",
+      outputDir: dir,
+      binaryPath: "/nonexistent/piper",
+      spawnImpl: (() => {
+        const child = new EventEmitter() as EventEmitter & { stdin: { end(text: string): void }; stderr: EventEmitter };
+        child.stderr = new EventEmitter();
+        child.stdin = {
+          end() {
+            queueMicrotask(() => {
+              const error = new Error("spawn /nonexistent/piper ENOENT") as Error & { code: string };
+              error.code = "ENOENT";
+              child.emit("error", error);
+            });
+          },
+        };
+        return child as never;
+      }) as never,
+    }),
+    /Piper binary not found: \/nonexistent\/piper.*PI_LISTENER_PIPER_BIN/,
+  );
 
-  assert.equal(fs.existsSync(result.audioPath), true);
-  await result.cleanup?.();
-  assert.equal(fs.existsSync(result.audioPath), false);
+  // Temp wav workspace is cleaned up on failure.
+  assert.deepEqual(fs.readdirSync(dir), []);
 }
 
 run().catch((error) => {

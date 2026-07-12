@@ -20,19 +20,22 @@
 - Tests updated (chooseVoiceLanguage removed): `tests/unit/unified-talk-menu.test.ts`, `tests/integration/{voice-settings-restore,voice-settings-recovery,voice-settings-defaults,unified-talk-menu-open}.test.ts`
 
 ### TODO (next session)
-1. Check `tests/unit/voice-settings-test-utils.ts` + remaining kept tests for `TALK_PI_*` env names → rename to `PI_LISTENER_*` (grep `TALK_PI_` to find leftovers)
-2. Update `tests/unit/tools*.test.ts` expectations: extension dir is now `.pi/agent/extensions/pi-listener`, env `PI_LISTENER_TOOLS_DIR`
-3. Add unit test for `listener-process.ts` (fake child script echoing canned JSON: parse, pause/resume writes, crash restart)
-4. `src/ui/footer-status.ts` — still references old voice statuses; works but could be trimmed (low priority; pi-listener.ts uses its own footerText)
-5. README rewrite for pi-listener
-6. `npm install` (decibri/whisper-cpp-node removed), then run kept tests; typecheck (`npx tsc --noEmit` — current lint noise is @types/node not resolving, likely missing node_modules)
-7. End-to-end: copy `.env.example` → `.env`, set real wake word, `/listen`, full loop test
-8. `whisperLanguage` in `piper-preferences.ts` still returns "pt" for non-english models — harmless (unused by listener) but revisit for English-only v1
+1. `src/ui/footer-status.ts` — still references old voice statuses; works but could be trimmed (low priority; pi-listener.ts uses its own footerText)
+2. README rewrite for pi-listener
+3. `npm install` (decibri/whisper-cpp-node removed), then run kept tests; typecheck (`npx tsc --noEmit` — current lint noise is @types/node not resolving, likely missing node_modules)
+4. End-to-end: copy `.env.example` → `.env`, set real wake word, `/listen`, full loop test
+5. `whisperLanguage` in `piper-preferences.ts` still returns "pt" for non-english models — harmless (unused by listener) but revisit for English-only v1
 
-### Done this session
+### Done previous session
 - **TODO #1 completed**: deleted dead files:
   `talk-pi.ts`, `src/input/`, `src/voice/`, `src/recording/`, `src/state/`, `src/ui/recording_status.ts`,
   plus 15 dead push-to-talk test files (kept: recording-gate, esc-*, piper-*, mute-*, spoken-*, temp-wav-*, tools-*, footer-status, playback-queue-* tests)
+
+### Done this session
+- **TODO #1 (env rename)**: `TALK_PI_*` → `PI_LISTENER_*` in all kept tests + fixtures (tools, piper-config, piper-preferences, voice-settings-test-utils unit+integration, 3 integration piper tests)
+- **TODO #2 (extension dir)**: fixtures now use `.pi/agent/extensions/pi-listener`; piper default model expectation updated `pt_BR-faber-medium` → `en_US-lessac-medium`
+- **TODO #3 (listener test)**: added `tests/unit/listener-process.test.ts` (fake child binary: JSON parse, PAUSE/RESUME stdin control, unexpected-exit restart)
+- **Source fix**: `src/tts/piper-config.ts` still imported removed `loadTalkPiConfig`/`TalkPiPiperConfig` → now `loadPiListenerConfig`/`PiListenerPiperConfig` (was a hard break for every piper test)
 
 ### Notes
 - Nothing loads `.env` for tests; entry loads it at import. Wake word required: extension errors on `/listen` if `PI_LISTENER_ACTIVATION_NAME` unset

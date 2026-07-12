@@ -7,14 +7,10 @@ import { synthesizeSpeechToWav } from "../../src/tts/piper-client.ts";
 
 async function run() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "talk-pi-piper-"));
-  const install = path.join(dir, "piper");
-  fs.mkdirSync(install, { recursive: true });
-  const exe = path.join(install, process.platform === "win32" ? "piper.exe" : "piper");
-  fs.writeFileSync(exe, "fake");
   const calls: Array<{ command: string; args: string[] }> = [];
 
   const result = await synthesizeSpeechToWav("hello world", {
-    binaryPath: exe,
+    binaryPath: "piper",
     modelPath: "voice.onnx",
     outputDir: dir,
     spawnImpl: ((command: string, args: string[]) => {
@@ -33,7 +29,7 @@ async function run() {
   });
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0]?.command, exe);
+  assert.equal(calls[0]?.command, "piper");
   assert.deepEqual(calls[0]?.args.slice(0, 4), ["--model", "voice.onnx", "--output_file", result.audioPath]);
   assert.equal(fs.existsSync(result.audioPath), true);
   assert.equal(fs.readFileSync(result.audioPath, "utf8"), "wav:hello world\n");

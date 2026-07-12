@@ -7,7 +7,7 @@ seedToolMarkers(fixture.homeToolsDir);
 seedToolMarkers(fixture.localToolsDir);
 
 const resolved = resolveToolsRoot({
-  env: { ...fixture.env, TALK_PI_TOOLS_DIR: fixture.localToolsDir } as NodeJS.ProcessEnv,
+  env: { ...fixture.env, PI_LISTENER_TOOLS_DIR: fixture.localToolsDir } as NodeJS.ProcessEnv,
   cwd: fixture.cwd,
 });
 assert.equal(resolved, fixture.homeToolsDir);

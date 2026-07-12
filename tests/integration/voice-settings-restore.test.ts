@@ -47,7 +47,7 @@ async function run() {
   });
 
   assert.ok(titles[0]?.includes("Muted"));
-  assert.deepEqual(optionSets[0], ["Status", "Voice Language", "Unmute", "Close"]);
+  assert.deepEqual(optionSets[0], ["Status", "Unmute", "Close"]);
   assert.ok(notifications.some((message) => message.includes("Voice Language: English - Lessac")));
 }
 

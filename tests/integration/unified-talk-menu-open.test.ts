@@ -30,7 +30,7 @@ async function run() {
   });
 
   assert.ok(titles[0]?.includes("Unmuted"));
-  assert.deepEqual(optionSets[0], ["Status", "Voice Language", "Mute", "Close"]);
+  assert.deepEqual(optionSets[0], ["Status", "Mute", "Close"]);
   assert.ok(notifications.includes("Status: Ready | F9 sends directly | F10 inserts into editor"));
   assert.ok(notifications.includes("Extension muted"));
   assert.equal(muted, true);

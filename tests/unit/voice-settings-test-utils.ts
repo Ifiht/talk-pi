@@ -5,7 +5,7 @@ import { executableName } from "../../src/tools.ts";
 
 export function createVoiceSettingsFixture(prefix: string) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
-  const toolsDir = path.join(root, ".pi", "agent", "extensions", "talk-pi");
+  const toolsDir = path.join(root, ".pi", "agent", "extensions", "pi-listener");
   const piperDir = path.join(toolsDir, "piper");
   const modelsDir = path.join(piperDir, "models");
   const prefsPath = path.join(root, "prefs.json");
@@ -27,9 +27,9 @@ export function createVoiceSettingsFixture(prefix: string) {
     env: {
       HOME: root,
       USERPROFILE: root,
-      TALK_PI_TOOLS_DIR: toolsDir,
-      TALK_PI_PIPER_MODELS_DIR: modelsDir,
-      TALK_PI_PIPER_PREFERENCES_PATH: prefsPath,
+      PI_LISTENER_TOOLS_DIR: toolsDir,
+      PI_LISTENER_PIPER_MODELS_DIR: modelsDir,
+      PI_LISTENER_PIPER_PREFERENCES_PATH: prefsPath,
     } as NodeJS.ProcessEnv,
   };
 }

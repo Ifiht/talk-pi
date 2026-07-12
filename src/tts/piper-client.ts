@@ -1,74 +1,16 @@
 import fs from "node:fs/promises";
-import path from "node:path";
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createTemporaryWavFile } from "./temp-wav.ts";
 import { resolvePiperConfig, type PiperConfigInput } from "./piper-config.ts";
-import { executableName, resolveToolPath } from "../tools.ts";
-import { ensurePiperTool } from "../tools-bootstrap.ts";
 
 export type PiperClientOptions = PiperConfigInput & {
   spawnImpl?: typeof spawn;
-  onNotify?: (message: string, level?: "info" | "warning" | "error") => void;
 };
 
 export type PiperSynthesisResult = {
   audioPath: string;
   cleanup?: () => Promise<void>;
 };
-
-async function pathExists(candidate: string): Promise<boolean> {
-  try {
-    await fs.access(candidate);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function localPiperBinaryCandidates(): string[] {
-  return [
-    resolveToolPath(["piper", executableName("piper")]),
-    resolveToolPath(["piper", "bin", executableName("piper")]),
-  ];
-}
-
-async function resolvePiperBinaryPath(candidate: string): Promise<string> {
-  const resolved = candidate.trim();
-  if (!resolved) {
-    throw new Error("Piper binary path is empty");
-  }
-
-  const candidateHasPath = resolved.includes(path.sep) || resolved.includes("/") || resolved.includes("\\");
-  if (candidateHasPath && (await pathExists(resolved))) {
-    return resolved;
-  }
-
-  for (const local of localPiperBinaryCandidates()) {
-    if (await pathExists(local)) {
-      return local;
-    }
-  }
-
-  if (path.isAbsolute(resolved) && (await pathExists(resolved))) {
-    return resolved;
-  }
-
-  const lookup = process.platform === "win32"
-    ? spawnSync("where", [resolved], { stdio: "pipe" })
-    : spawnSync("sh", ["-lc", `command -v ${resolved}`], { stdio: "pipe" });
-  const stdout = String(lookup.stdout ?? "").trim();
-  if (lookup.status === 0 && stdout) {
-    return stdout.split(/\r?\n/)[0]!.trim();
-  }
-
-  if (await pathExists(resolved)) {
-    return resolved;
-  }
-
-  throw new Error(
-    `Piper binary not found: ${resolved}. Put it in the extension folder or set PI_LISTENER_PIPER_BIN.`,
-  );
-}
 
 export async function synthesizeSpeechToWav(
   text: string,
@@ -80,8 +22,7 @@ export async function synthesizeSpeechToWav(
   }
 
   const config = resolvePiperConfig(options);
-  await ensurePiperTool({ env: config.env, onNotify: options.onNotify });
-  const binaryPath = await resolvePiperBinaryPath(config.binaryPath);
+  const binaryPath = config.binaryPath;
   const modelPath = config.modelPath;
   const tempFile = await createTemporaryWavFile(config.outputDir);
 
@@ -98,7 +39,12 @@ export async function synthesizeSpeechToWav(
         stderr += String(chunk);
       });
 
-      child.on("error", reject);
+      child.stdin.on?.("error", () => undefined);
+      child.on("error", (error) => {
+        reject((error as NodeJS.ErrnoException).code === "ENOENT"
+          ? new Error(`Piper binary not found: ${binaryPath}. Put it in the extension folder or set PI_LISTENER_PIPER_BIN.`)
+          : error);
+      });
       child.on("close", (code) => {
         if (code !== 0) {
           reject(new Error(stderr.trim() || `Piper failed with code ${code}`));

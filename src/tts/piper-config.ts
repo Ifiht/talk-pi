@@ -1,4 +1,4 @@
-import { loadTalkPiConfig, type TalkPiPiperConfig } from "../config.ts";
+import { loadPiListenerConfig, type PiListenerPiperConfig } from "../config.ts";
 
 export type PiperConfigInput = {
   binaryPath?: string;
@@ -7,7 +7,7 @@ export type PiperConfigInput = {
   env?: NodeJS.ProcessEnv;
 };
 
-export type PiperConfig = TalkPiPiperConfig & {
+export type PiperConfig = PiListenerPiperConfig & {
   env: NodeJS.ProcessEnv;
 };
 
@@ -18,7 +18,7 @@ function normalized(value: string | undefined): string | undefined {
 
 export function resolvePiperConfig(options: PiperConfigInput = {}): PiperConfig {
   const env = options.env ?? process.env;
-  const base = loadTalkPiConfig(env).piper;
+  const base = loadPiListenerConfig(env).piper;
 
   return {
     binaryPath: normalized(options.binaryPath) ?? base.binaryPath,

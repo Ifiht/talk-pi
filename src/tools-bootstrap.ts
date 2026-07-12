@@ -165,6 +165,15 @@ async function bootstrapWindowsZip(url: string, targetDir: string): Promise<void
 }
 
 export async function ensurePiperTool(options: ToolBootstrapOptions = {}): Promise<{ binaryPath: string; modelPath: string }> {
+  const env = options.env ?? process.env;
+  const explicitBinary = env.PI_LISTENER_PIPER_BIN?.trim();
+  const externalBinary = explicitBinary && exists(explicitBinary) ? explicitBinary : undefined;
+  const explicitModel = env.PI_LISTENER_PIPER_MODEL_PATH?.trim();
+
+  if (externalBinary && explicitModel && exists(explicitModel)) {
+    return { binaryPath: externalBinary, modelPath: explicitModel };
+  }
+
   let binary: string;
   let model: string;
   let modelJson: string;
@@ -182,9 +191,9 @@ export async function ensurePiperTool(options: ToolBootstrapOptions = {}): Promi
     throw new Error(`[pi-listener] Unable to resolve Piper extension path: ${details}`);
   }
 
-  if (!exists(binary) || !exists(model) || !exists(modelJson)) {
+  if (!externalBinary && (!exists(binary) || !exists(model) || !exists(modelJson))) {
     if (process.platform !== "win32") {
-      throw new Error("Piper missing. Put it in the extension folder or set PI_LISTENER_TOOLS_DIR.");
+      throw new Error("Piper missing. Put it in the extension folder, or set PI_LISTENER_PIPER_BIN / PI_LISTENER_TOOLS_DIR.");
     }
 
     notify(options, "Pi-listener: Downloading 📥 Piper", "info");
@@ -213,7 +222,7 @@ export async function ensurePiperTool(options: ToolBootstrapOptions = {}): Promi
     await downloadFile(PIPER_LESSAC_VOICE_MODEL_JSON, lessacJson);
   }
 
-  return { binaryPath: binary, modelPath: model };
+  return { binaryPath: externalBinary ?? binary, modelPath: model };
 }
 
 export async function ensureWhisperToolModel(options: ToolBootstrapOptions = {}): Promise<string> {

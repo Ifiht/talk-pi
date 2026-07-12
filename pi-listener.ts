@@ -72,13 +72,10 @@ export default function (pi: ExtensionAPI) {
         resumeListening();
       }
     },
-    piper: async () => ({
-      ...(await resolvePiperRuntimeConfig({
-        ...config.piper,
-        modelPath: piperSelection?.modelPath ?? config.piper.modelPath,
-        env: process.env,
-      })),
-      onNotify: (message: string, level?: "info" | "warning" | "error") => notify(message, level ?? "info"),
+    piper: async () => resolvePiperRuntimeConfig({
+      ...config.piper,
+      modelPath: piperSelection?.modelPath ?? config.piper.modelPath,
+      env: process.env,
     }),
   });
 

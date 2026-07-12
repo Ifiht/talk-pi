@@ -41,7 +41,7 @@ async function run() {
   });
 
   assert.ok(titles[0]?.includes("Unmuted"));
-  assert.deepEqual(optionSets[0], ["Status", "Voice Language", "Mute", "Close"]);
+  assert.deepEqual(optionSets[0], ["Status", "Mute", "Close"]);
   assert.ok(notifications.some((message) => message.includes("Voice Language: Portuguese - Faber")));
 }
 

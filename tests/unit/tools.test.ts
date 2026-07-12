@@ -13,6 +13,6 @@ assert.equal(
   path.join(fixture.localToolsDir, "piper", executableName("piper")),
 );
 assert.equal(
-  resolveToolsRoot({ env: { TALK_PI_TOOLS_DIR: "/custom/tools", HOME: fixture.homeDir, USERPROFILE: fixture.homeDir } as NodeJS.ProcessEnv, cwd: fixture.cwd }),
+  resolveToolsRoot({ env: { PI_LISTENER_TOOLS_DIR: "/custom/tools", HOME: fixture.homeDir, USERPROFILE: fixture.homeDir } as NodeJS.ProcessEnv, cwd: fixture.cwd }),
   "/custom/tools",
 );

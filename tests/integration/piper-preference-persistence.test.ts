@@ -14,8 +14,8 @@ async function run() {
   fs.writeFileSync(pt, "pt");
 
   const env = {
-    TALK_PI_PIPER_MODELS_DIR: modelsDir,
-    TALK_PI_PIPER_PREFERENCES_PATH: path.join(dir, "prefs.json"),
+    PI_LISTENER_PIPER_MODELS_DIR: modelsDir,
+    PI_LISTENER_PIPER_PREFERENCES_PATH: path.join(dir, "prefs.json"),
   } as NodeJS.ProcessEnv;
 
   await setPiperVoiceModel(pt.replace(/\\/g, "/").replace(/\.onnx$/i, ""), { env });
